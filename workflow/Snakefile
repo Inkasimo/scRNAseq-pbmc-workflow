@@ -1,0 +1,9 @@
+rule all:
+    input:
+        "results/placeholder.txt"
+
+rule placeholder:
+    output:
+        "results/placeholder.txt"
+    shell:
+        "echo 'pipeline works' > {output}"
