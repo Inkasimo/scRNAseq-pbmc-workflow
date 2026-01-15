@@ -1,0 +1,11 @@
+data/
+results/
+*.log
+.snakemake/
+__pycache__/
+*.pyc
+.Rhistory
+.RData
+.Rproj.user/
+.vscode/
+.DS_Store
