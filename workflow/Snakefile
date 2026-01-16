@@ -1,9 +1,22 @@
+configfile: "config/config.yaml"
+
+DONORS = config["pbmc"].keys()
+
 rule all:
     input:
-        "results/placeholder.txt"
+        expand("data/raw/{donor}/fastqs.done", donor=DONORS)
 
-rule placeholder:
+rule download_fastqs:
     output:
-        "results/placeholder.txt"
+        tar="data/raw/{donor}/fastqs.tar",
+        done="data/raw/{donor}/fastqs.done"
+    params:
+        url=lambda wc: config["pbmc"][wc.donor]["url"]
     shell:
-        "echo 'pipeline works' > {output}"
+        """
+		set -euo pipefail
+        mkdir -p data/raw/{wildcards.donor}
+        wget -c -O {output.tar} {params.url}
+        tar -xvf {output.tar} -C data/raw/{wildcards.donor}
+        touch {output.done}
+        """
