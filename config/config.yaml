@@ -1,0 +1,9 @@
+pbmc:
+  donor1:
+    url: "https://cf.10xgenomics.com/samples/cell-exp/9.0.0/5k_Human_Donor1_PBMC_3p_gem-x_Multiplex/5k_Human_Donor1_PBMC_3p_gem-x_Multiplex_fastqs.tar"
+  donor2:
+    url: "https://cf.10xgenomics.com/samples/cell-exp/9.0.0/5k_Human_Donor2_PBMC_3p_gem-x_Multiplex/5k_Human_Donor2_PBMC_3p_gem-x_Multiplex_fastqs.tar"
+  donor3:
+    url: "https://cf.10xgenomics.com/samples/cell-exp/9.0.0/5k_Human_Donor3_PBMC_3p_gem-x_Multiplex/5k_Human_Donor3_PBMC_3p_gem-x_Multiplex_fastqs.tar"
+  donor4:
+    url: "https://cf.10xgenomics.com/samples/cell-exp/9.0.0/5k_Human_Donor4_PBMC_3p_gem-x_Multiplex/5k_Human_Donor4_PBMC_3p_gem-x_Multiplex_fastqs.tar"
