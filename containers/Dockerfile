@@ -8,8 +8,11 @@ RUN apt-get update && apt-get install -y \
     r-base \
     git \
     curl \
+    wget \
     ca-certificates \
     build-essential \
+    tar \
+    gzip \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip3 install --no-cache-dir \
