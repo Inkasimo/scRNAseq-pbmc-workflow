@@ -13,10 +13,13 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     tar \
     gzip \
+	fastqc \
+	default-jre \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip3 install --no-cache-dir \
     snakemake \
-    pulp==2.7.0
+    pulp==2.7.0 \
+	multiqc
 
 WORKDIR /work

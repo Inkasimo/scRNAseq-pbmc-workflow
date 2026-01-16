@@ -1,10 +1,12 @@
 configfile: "config/config.yaml"
 
-DONORS = config["pbmc"].keys()
+DONORS = list(config["pbmc"].keys())
 
 rule all:
     input:
-        expand("data/raw/{donor}/fastqs.done", donor=DONORS)
+        expand("data/raw/{donor}/fastqs.done", donor=DONORS),
+        expand("results/qc/fastqc/raw/{donor}/fastqc.done", donor=DONORS),
+        "results/qc/multiqc/raw/multiqc_report.html"
 
 rule download_fastqs:
     output:
@@ -12,11 +14,60 @@ rule download_fastqs:
         done="data/raw/{donor}/fastqs.done"
     params:
         url=lambda wc: config["pbmc"][wc.donor]["url"]
+    log:
+        "results/logs/download/{donor}.log"
     shell:
-        """
-		set -euo pipefail
+        r"""
+        set -euo pipefail
         mkdir -p data/raw/{wildcards.donor}
-        wget -c -O {output.tar} {params.url}
-        tar -xvf {output.tar} -C data/raw/{wildcards.donor}
+        mkdir -p results/logs/download
+
+        echo "[START] $(date)" > {log}
+        wget -c -O {output.tar} "{params.url}" >> {log} 2>&1
+        tar -xvf {output.tar} -C data/raw/{wildcards.donor} >> {log} 2>&1
         touch {output.done}
+        echo "[END] $(date)" >> {log}
+        """
+
+		
+rule fastqc_raw:
+    input:
+        "data/raw/{donor}/fastqs.done"
+    output:
+        "results/qc/fastqc/raw/{donor}/fastqc.done"
+    log:
+        "results/logs/qc/fastqc_raw_{donor}.log"
+    threads: 4
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p results/qc/fastqc/raw/{wildcards.donor}
+        mkdir -p results/logs/qc
+		
+        echo "[START] $(date)" > {log}
+
+        find data/raw/{wildcards.donor} -type f \( -name "*.fastq.gz" -o -name "*.fq.gz" \) -print0 \
+          | xargs -0 -r -n 1 -P {threads} fastqc -o results/qc/fastqc/raw/{wildcards.donor} >> {log} 2>&1
+
+        touch {output}
+        echo "[END] $(date)" >> {log}
+        """
+
+
+rule multiqc_raw:
+    input:
+        expand("results/qc/fastqc/raw/{donor}/fastqc.done", donor=DONORS)
+    output:
+        "results/qc/multiqc/raw/multiqc_report.html"
+    log:
+        "results/logs/qc/multiqc_raw.log"
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p results/qc/multiqc/raw
+        mkdir -p results/logs/qc
+
+        echo "[START] $(date)" > {log}
+        multiqc results/qc/fastqc/raw -o results/qc/multiqc/raw >> {log} 2>&1
+        echo "[END] $(date)" >> {log}
         """
