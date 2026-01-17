@@ -108,6 +108,15 @@ swap=16GB
 
 [RESULTS TO BE ADDED]
 
+#Notes
+
+Maybe a t-cell network made per donor...
+
+then take the edges that appear > 3 of networks..
+
+
+Think about it
+
 ## 8. Reproducibility
 The full pipeline, including tool versions and execution steps, is available
 in the accompanying GitHub repository.
