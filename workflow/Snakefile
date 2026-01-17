@@ -135,7 +135,7 @@ rule starsolo:
     log:
         "results/logs/alignment/starsolo_{donor}.log"
     input:
-        idx=directory(config["ref"]["star_index"]),
+        idx=config["ref"]["star_index"],
         index_done="data/ref/star_index.done",
         r1=lambda wc: lane_fastqs(wc.donor, "R1"),
         r2=lambda wc: lane_fastqs(wc.donor, "R2"),
@@ -201,3 +201,52 @@ rule whitelist_present:
         test -s "{input.wl}"
         touch "{output.done}"
         """
+		
+rule download_genome_fasta:
+    output:
+        fa=config["ref"]["genome_fasta"]
+    params:
+        url=config["ref"]["genome_fasta_url"]
+    log:
+        "results/logs/ref/genome_fasta.log"
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p $(dirname "{output.fa}")
+        mkdir -p results/logs/ref
+
+        echo "[START] $(date)" > "{log}"
+        echo "URL: {params.url}" >> "{log}"
+
+        tmp="{output.fa}.gz"
+        curl -L --fail --retry 10 --retry-delay 5 -o "$tmp" "{params.url}" >> "{log}" 2>&1
+        gunzip -f "$tmp" >> "{log}" 2>&1
+
+        test -s "{output.fa}"
+        echo "[END] $(date)" >> "{log}"
+        """
+
+rule download_gtf:
+    output:
+        gtf=config["ref"]["gtf"]
+    params:
+        url=config["ref"]["gtf_url"]
+    log:
+        "results/logs/ref/gtf.log"
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p $(dirname "{output.gtf}")
+        mkdir -p results/logs/ref
+
+        echo "[START] $(date)" > "{log}"
+        echo "URL: {params.url}" >> "{log}"
+
+        tmp="{output.gtf}.gz"
+        curl -L --fail --retry 10 --retry-delay 5 -o "$tmp" "{params.url}" >> "{log}" 2>&1
+        gunzip -f "$tmp" >> "{log}" 2>&1
+
+        test -s "{output.gtf}"
+        echo "[END] $(date)" >> "{log}"
+        """
+
