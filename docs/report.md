@@ -55,6 +55,33 @@ artifacts via soft-clipping while preserving the read structure for accurate ali
 and UMI counting; therefore trimming was omitted unless strong adapter signal is observed.
 
 ## 6. Alignment and Quantification (planned)
+
+### Choice of aligner: STARsolo vs Cell Ranger
+<1–2 paragraphs explaining transparency, control, reproducibility>
+
+### Reference genome and annotation
+- GRCh38 primary assembly
+- GENCODE v45
+- STAR 2.7.11b
+- Index built locally (not distributed)
+
+### Read structure and chemistry assumptions
+- 10x GEM-X 3′ v4
+- R1 = CB+UMI, R2 = cDNA
+- Explicit CB/UMI coordinates
+
+### Counting and outputs
+- STARsolo gene-level counting
+- Raw and filtered gene–cell matrices
+- No external counting (e.g. featureCounts)
+
+### BAM output
+- Disabled by default to reduce memory and disk usage
+- STARsolo matrices are complete without BAMs
+- Instructions provided to enable BAMs if needed
+
+
+
 Reads will be aligned and quantified using STARsolo with UMI-aware counting.
 
 Running on Windows with WSL2, I had to increase WSL memory.

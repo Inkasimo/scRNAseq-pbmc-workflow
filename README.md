@@ -21,3 +21,8 @@ To enable it:
 3. Restart WSL:
        wsl --shutdown
 4. Restart Docker Desktop
+
+### Running via wrapper
+./run.sh build
+./run.sh dry
+./run.sh run -p -j 1
