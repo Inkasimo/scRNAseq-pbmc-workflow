@@ -15,6 +15,8 @@ is not designed to generate novel biological findings or support
 biological claims beyond demonstrating a complete and functional
 pipeline.
 
+\textit{Also add my computer specs on the report}
+
 ## 2. Repository Structure
 - containers/: Docker images for isolated execution
 - workflow/: Snakemake rules
@@ -55,8 +57,10 @@ and UMI counting; therefore trimming was omitted unless strong adapter signal is
 ## 6. Alignment and Quantification (planned)
 Reads will be aligned and quantified using STARsolo with UMI-aware counting.
 
-The default docker settings caused an OOM error so needed to 
-write a .wslconfig file in C:\Users\"Username"
+Running on Windows with WSL2, I had to increase WSL memory.
+A template is provided at docs/wslconfig.example.  
+The default WSL settings caused an OOM error. Rename the file to 
+".wslconfig" and copy in folder C:\Users\"Username"
 
 [wsl2]
 memory=32GB
