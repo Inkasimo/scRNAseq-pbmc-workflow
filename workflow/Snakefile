@@ -154,6 +154,15 @@ rule starsolo:
         mkdir -p {params.outdir}
         mkdir -p results/logs/alignment
 
+        # NOTE:
+        # By default we disable BAM output to reduce memory and disk usage.
+        # STARsolo still produces full gene-cell count matrices under:
+        #   Solo.out/Gene/{raw,filtered}/
+        #
+        # To enable BAMs for debugging/demo purposes, replace the line below with:
+        #   --outSAMtype BAM SortedByCoordinate \
+        # (optionally also add --limitBAMsortRAM <bytes> to cap memory)
+
         STAR \
           --runThreadN {threads} \
           --genomeDir {input.idx} \
@@ -165,7 +174,7 @@ rule starsolo:
           --soloCBstart 1 --soloCBlen 16 \
           --soloUMIstart 17 --soloUMIlen 12 \
           --soloFeatures Gene \
-          --outSAMtype BAM SortedByCoordinate \
+          --outSAMtype None \
           > {log} 2>&1
 
         touch {output.done}
