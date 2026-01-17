@@ -9,4 +9,11 @@ pbmc:
     url: "https://cf.10xgenomics.com/samples/cell-exp/9.0.0/5k_Human_Donor4_PBMC_3p_gem-x_Multiplex/5k_Human_Donor4_PBMC_3p_gem-x_Multiplex_fastqs.tar"
 resources:
   fastqc_threads: 2
-
+  star_threads: 8
+trim:
+  enabled: false
+ref:
+  genome_fasta: "data/ref/GRCh38.primary_assembly.genome.fa"
+  gtf: "data/ref/gencode.v45.annotation.gtf"
+  star_index: "data/ref/star_index_gencode_v45_star_2.7.11b"
+  whitelist: "data/ref/barcodes/3M-3pgex-may-2023_TRU.txt.gz"

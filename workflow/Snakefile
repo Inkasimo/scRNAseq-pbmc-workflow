@@ -1,13 +1,28 @@
+import glob
+from snakemake.io import directory
+
 configfile: "config/config.yaml"
 
 DONORS = list(config["pbmc"].keys())
 FASTQC_THREADS = int(config.get("resources", {}).get("fastqc_threads", 2))
+STAR_THREADS = int(config.get("resources", {}).get("star_threads", 8))
+
+def lane_fastqs(donor, read):
+    pattern = f"data/raw/{donor}/*fastqs/*_{read}_*.fastq.gz"
+    files = sorted(glob.glob(pattern))
+    if not files:
+        raise ValueError(f"No {read} FASTQs found for {donor} with pattern: {pattern}")
+    return files
+
 
 rule all:
     input:
         expand("data/raw/{donor}/fastqs.done", donor=DONORS),
         expand("results/qc/fastqc/raw/{donor}/fastqc.done", donor=DONORS),
-        "results/qc/multiqc/raw/multiqc_report.html"
+        "results/qc/multiqc/raw/multiqc_report.html",
+        "data/ref/star_index.done",
+        expand("results/alignment/starsolo/{donor}/starsolo.done", donor=DONORS)
+		
 
 
 rule download_fastqs:
@@ -85,3 +100,104 @@ rule multiqc_raw:
         echo "[END] $(date)" >> {log}
         """
 
+rule star_index:
+    input:
+        fasta=config["ref"]["genome_fasta"],
+        gtf=config["ref"]["gtf"]
+    output:
+        idx=directory(config["ref"]["star_index"]),
+        done="data/ref/star_index.done"
+    threads: STAR_THREADS
+    params:
+        sjdbOverhang=89  # cDNA read length (90) - 1
+    log:
+        "results/logs/ref/star_index.log"
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p {output.idx}
+        mkdir -p results/logs/ref
+
+        STAR \
+          --runThreadN {threads} \
+          --runMode genomeGenerate \
+          --genomeDir {output.idx} \
+          --genomeFastaFiles {input.fasta} \
+          --sjdbGTFfile {input.gtf} \
+          --sjdbOverhang {params.sjdbOverhang} \
+          > {log} 2>&1
+
+        touch {output.done}
+        """
+
+rule starsolo:
+    threads: STAR_THREADS
+    log:
+        "results/logs/alignment/starsolo_{donor}.log"
+    input:
+        idx=directory(config["ref"]["star_index"]),
+        index_done="data/ref/star_index.done",
+        r1=lambda wc: lane_fastqs(wc.donor, "R1"),
+        r2=lambda wc: lane_fastqs(wc.donor, "R2"),
+        wl="data/ref/barcodes/3M-3pgex-may-2023_TRU.txt.gz",
+        wl_done="data/ref/whitelist.done",
+        done="data/raw/{donor}/fastqs.done"
+    output:
+        done="results/alignment/starsolo/{donor}/starsolo.done"
+    params:
+        outdir=lambda wc: f"results/alignment/starsolo/{wc.donor}",
+        r1=lambda wc, input: ",".join(input.r1),
+        r2=lambda wc, input: ",".join(input.r2)
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p {params.outdir}
+        mkdir -p results/logs/alignment
+
+        STAR \
+          --runThreadN {threads} \
+          --genomeDir {input.idx} \
+          --readFilesIn {params.r2} {params.r1} \
+          --readFilesCommand zcat \
+          --outFileNamePrefix {params.outdir}/ \
+          --soloType CB_UMI_Simple \
+          --soloCBwhitelist {input.wl} \
+          --soloCBstart 1 --soloCBlen 16 \
+          --soloUMIstart 17 --soloUMIlen 12 \
+          --soloFeatures Gene \
+          --outSAMtype BAM SortedByCoordinate \
+          > {log} 2>&1
+
+        touch {output.done}
+        """
+
+		
+rule download_barcode_whitelist:
+    output:
+        wl="data/ref/barcodes/3M-3pgex-may-2023_TRU.txt.gz"
+    log:
+        "results/logs/ref/barcodes.log"
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p data/ref/barcodes
+        mkdir -p results/logs/ref
+
+        curl -L --fail --retry 10 --retry-delay 5 \
+          -o {output.wl} \
+          https://cf.10xgenomics.com/supp/cell-exp/barcodes/3M-3pgex-may-2023_TRU.txt.gz \
+          >> {log} 2>&1
+        """
+
+		
+rule whitelist_present:
+    input:
+        wl=config["ref"]["whitelist"]
+    output:
+        done=touch("data/ref/whitelist.done")
+    shell:
+        r"""
+        set -euo pipefail
+        test -s "{input.wl}"
+        touch "{output.done}"
+        """
