@@ -38,7 +38,19 @@ Raw FASTQ quality will be assessed using FastQC and summarized with MultiQC.
 Based on these results, a decision will be made whether explicit read trimming
 is required.
 
-[RESULTS TO BE ADDED]
+FastQC/MultiQC did not indicate meaningful adapter contamination in the cDNA read.
+R2 “Adapter Content” is reported as PASS across the lanes/samples 
+in the aggregated MultiQC status table in MultiQC report
+
+The main flagged item is Overrepresented sequences in some least one R2 files,
+where the top sequences match a SMARTer/SO-like oligonucleotide and each sits at ~0.10%
+of reads (FastQC’s reporting threshold), consistent with expected
+library-structure/short-insert artifacts rather than pervasive adapter read-through. 
+
+For 10x 3′ scRNA-seq, trimming is typically unnecessary and can be counterproductive: 
+standard pipelines (e.g., Cell Ranger / STARsolo) are designed to tolerate modest 3′ 
+artifacts via soft-clipping while preserving the read structure for accurate alignment 
+and UMI counting; therefore trimming was omitted unless strong adapter signal is observed.
 
 ## 6. Alignment and Quantification (planned)
 Reads will be aligned and quantified using STARsolo with UMI-aware counting.
