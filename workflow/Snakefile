@@ -104,6 +104,7 @@ rule star_index:
     input:
         fasta=config["ref"]["genome_fasta"],
         gtf=config["ref"]["gtf"]
+		trigger=lambda wc: config["ref"]["build_star_index"]
     output:
         idx=directory(config["ref"]["star_index"]),
         done="data/ref/star_index.done"
