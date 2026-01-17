@@ -21,7 +21,7 @@ pipeline.
 - scripts/: R/Python analysis scripts
 - config/: dataset and parameter configuration
 - data/: raw and intermediate data (not versioned)
-- results/: analysis outputs (not versioned)
+- results/: analysis outputs and logs (not versioned)
 - docs/: documentation and reports
 
 ## 3. Execution Model
@@ -55,14 +55,15 @@ and UMI counting; therefore trimming was omitted unless strong adapter signal is
 ## 6. Alignment and Quantification (planned)
 Reads will be aligned and quantified using STARsolo with UMI-aware counting.
 
-Needed to make a .wslconfig file in C:\Users\inkas
+The default docker settings caused an OOM error so needed to 
+write a .wslconfig file in C:\Users\"Username"
 
 [wsl2]
 memory=32GB
 processors=8
 swap=16GB
 
-Also add my computer specs on the report
+\textit{Also add my computer specs on the report}
 
 [RESULTS TO BE ADDED]
 
