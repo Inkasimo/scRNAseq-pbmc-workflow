@@ -26,3 +26,36 @@ yOU CAN WRAP THIS IN SLURM IF YOU CAN WORK IN SLURM
 # Check process in container
 
 docker ps
+
+# Make several config files where the booleans differ
+
+1) --cpus (Docker)
+docker run --cpus 8 …
+
+
+What it controls
+
+Linux cgroup CPU quota
+
+Hard upper limit on how many CPU cores the container can use
+
+Scope
+
+Entire container
+
+All processes inside it combined
+
+If you set
+
+--cpus 8
+
+
+Then:
+
+STAR, FastQC, Java, Python, everything together cannot exceed ~8 cores
+
+If you don’t set it → container can use all host CPUs
+
+Think of this as:
+
+“How much of my machine am I willing to give this container?”
