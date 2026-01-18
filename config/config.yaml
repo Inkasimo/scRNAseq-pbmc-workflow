@@ -1,22 +1,36 @@
 pbmc:
   donor1:
     url: "https://cf.10xgenomics.com/samples/cell-exp/9.0.0/5k_Human_Donor1_PBMC_3p_gem-x_Multiplex/5k_Human_Donor1_PBMC_3p_gem-x_Multiplex_fastqs.tar"
+    fastq_dir: "data/raw/donor1/5k_Human_Donor1_PBMC_3p_gem-x_GEX_fastqs"
   donor2:
     url: "https://cf.10xgenomics.com/samples/cell-exp/9.0.0/5k_Human_Donor2_PBMC_3p_gem-x_Multiplex/5k_Human_Donor2_PBMC_3p_gem-x_Multiplex_fastqs.tar"
+    fastq_dir: "data/raw/donor2/5k_Human_Donor2_PBMC_3p_gem-x_GEX_fastqs"
   donor3:
     url: "https://cf.10xgenomics.com/samples/cell-exp/9.0.0/5k_Human_Donor3_PBMC_3p_gem-x_Multiplex/5k_Human_Donor3_PBMC_3p_gem-x_Multiplex_fastqs.tar"
+    fastq_dir: "data/raw/donor3/5k_Human_Donor3_PBMC_3p_gem-x_GEX_fastqs"
   donor4:
     url: "https://cf.10xgenomics.com/samples/cell-exp/9.0.0/5k_Human_Donor4_PBMC_3p_gem-x_Multiplex/5k_Human_Donor4_PBMC_3p_gem-x_Multiplex_fastqs.tar"
+    fastq_dir: "data/raw/donor4/5k_Human_Donor4_PBMC_3p_gem-x_GEX_fastqs"
+
 resources:
   fastqc_threads: 2
   star_threads: 8
+
 trim:
   enabled: false
+
+io:
+  # set true ONLY if you want Snakemake to download FASTQs.
+  # when false, workflow will only validate that fastq_dir exists and contains R1/R2.
+  download_fastqs: false
+
 ref:
   genome_fasta: "data/ref/GRCh38.primary_assembly.genome.fa"
   gtf: "data/ref/gencode.v45.annotation.gtf"
   star_index: "data/ref/star_index_gencode_v45_star_2.7.11b"
-  whitelist: "data/ref/barcodes/3M-3pgex-may-2023_TRU.txt.gz"
-  
+  whitelist: "resources/barcodes/3M-3pgex-may-2023_TRU.txt"
+
   genome_fasta_url: "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_45/GRCh38.primary_assembly.genome.fa.gz"
   gtf_url: "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_45/gencode.v45.annotation.gtf.gz"
+
+  build_star_index: false

@@ -6,9 +6,13 @@ configfile: "config/config.yaml"
 DONORS = list(config["pbmc"].keys())
 FASTQC_THREADS = int(config.get("resources", {}).get("fastqc_threads", 2))
 STAR_THREADS = int(config.get("resources", {}).get("star_threads", 8))
+DOWNLOAD_FASTQS = bool(config.get("io", {}).get("download_fastqs", False))
+BUILD_STAR_INDEX = bool(config.get("ref", {}).get("build_star_index", True))
+
 
 def lane_fastqs(donor, read):
-    pattern = f"data/raw/{donor}/*fastqs/*_{read}_*.fastq.gz"
+    fqdir = config["pbmc"][donor]["fastq_dir"]
+    pattern = f"{fqdir}/*_{read}_*.fastq.gz"
     files = sorted(glob.glob(pattern))
     if not files:
         raise ValueError(f"No {read} FASTQs found for {donor} with pattern: {pattern}")
@@ -22,39 +26,58 @@ rule all:
         "results/qc/multiqc/raw/multiqc_report.html",
         "data/ref/star_index.done",
         expand("results/alignment/starsolo/{donor}/starsolo.done", donor=DONORS)
-		
 
 
-rule download_fastqs:
-    output:
-        tar="data/raw/{donor}/fastqs.tar",
-        done="data/raw/{donor}/fastqs.done"
-    params:
-        url=lambda wc: config["pbmc"][wc.donor]["url"]
-    log:
-        "results/logs/download/{donor}.log"
-    shell:
-        r"""
-        set -euo pipefail
-        mkdir -p data/raw/{wildcards.donor}
-        mkdir -p results/logs/download
+# ---- FASTQ acquisition: optional download vs presence check ----
 
-        echo "[START] $(date)" > {log}
-        echo "URL: {params.url}" >> {log}
+if DOWNLOAD_FASTQS:
+    rule download_fastqs:
+        output:
+            tar="data/raw/{donor}/fastqs.tar",
+            done="data/raw/{donor}/fastqs.done"
+        params:
+            url=lambda wc: config["pbmc"][wc.donor]["url"]
+        log:
+            "results/logs/download/{donor}.log"
+        shell:
+            r"""
+            set -euo pipefail
+            mkdir -p data/raw/{wildcards.donor}
+            mkdir -p results/logs/download
 
-        wget --continue \
-             --tries=50 \
-             --waitretry=10 \
-             --read-timeout=30 \
-             --timeout=30 \
-             -O {output.tar} "{params.url}" >> {log} 2>&1
+            echo "[START] $(date)" > {log}
+            echo "URL: {params.url}" >> {log}
 
-        tar -xf {output.tar} -C data/raw/{wildcards.donor} >> {log} 2>&1
+            wget --continue \
+                 --tries=50 \
+                 --waitretry=10 \
+                 --read-timeout=30 \
+                 --timeout=30 \
+                 -O {output.tar} "{params.url}" >> {log} 2>&1
 
-        touch {output.done}
-        echo "[END] $(date)" >> {log}
-        """
+            tar -xf {output.tar} -C data/raw/{wildcards.donor} >> {log} 2>&1
 
+            touch {output.done}
+            echo "[END] $(date)" >> {log}
+            """
+else:
+    rule fastqs_present:
+        output:
+            done="data/raw/{donor}/fastqs.done"
+        params:
+            fqdir=lambda wc: config["pbmc"][wc.donor]["fastq_dir"]
+        shell:
+            r"""
+            set -euo pipefail
+            test -d "{params.fqdir}"
+            ls "{params.fqdir}"/*_R1_*.fastq.gz >/dev/null
+            ls "{params.fqdir}"/*_R2_*.fastq.gz >/dev/null
+            mkdir -p "$(dirname "{output.done}")"
+            touch "{output.done}"
+            """
+
+
+# ---- QC ----
 
 rule fastqc_raw:
     input:
@@ -64,6 +87,8 @@ rule fastqc_raw:
     log:
         "results/logs/qc/fastqc_raw_{donor}.log"
     threads: FASTQC_THREADS
+    params:
+        fqdir=lambda wc: config["pbmc"][wc.donor]["fastq_dir"]
     shell:
         r"""
         set -euo pipefail
@@ -72,13 +97,14 @@ rule fastqc_raw:
 
         echo "[START] $(date)" > {log}
 
-        find data/raw/{wildcards.donor} -type f \( -name "*.fastq.gz" -o -name "*.fq.gz" \) -print0 \
+        find "{params.fqdir}" -type f \( -name "*.fastq.gz" -o -name "*.fq.gz" \) -print0 \
           | xargs -0 -r -n 1 -P {threads} fastqc \
               -o results/qc/fastqc/raw/{wildcards.donor} >> {log} 2>&1
 
         touch {output}
         echo "[END] $(date)" >> {log}
         """
+
 
 
 rule multiqc_raw:
@@ -100,36 +126,119 @@ rule multiqc_raw:
         echo "[END] $(date)" >> {log}
         """
 
-rule star_index:
-    input:
-        fasta=config["ref"]["genome_fasta"],
-        gtf=config["ref"]["gtf"]
-		trigger=lambda wc: config["ref"]["build_star_index"]
+
+# ---- Reference / index ----
+
+rule download_genome_fasta:
     output:
-        idx=directory(config["ref"]["star_index"]),
-        done="data/ref/star_index.done"
-    threads: STAR_THREADS
+        fasta=config["ref"]["genome_fasta"]
     params:
-        sjdbOverhang=89  # cDNA read length (90) - 1
+        url=config["ref"]["genome_fasta_url"]
     log:
-        "results/logs/ref/star_index.log"
+        "results/logs/ref/genome_fasta.log"
     shell:
         r"""
         set -euo pipefail
-        mkdir -p {output.idx}
+        mkdir -p "$(dirname "{output.fasta}")"
         mkdir -p results/logs/ref
 
-        STAR \
-          --runThreadN {threads} \
-          --runMode genomeGenerate \
-          --genomeDir {output.idx} \
-          --genomeFastaFiles {input.fasta} \
-          --sjdbGTFfile {input.gtf} \
-          --sjdbOverhang {params.sjdbOverhang} \
-          > {log} 2>&1
+        curl -L --fail --retry 10 --retry-delay 5 \
+          "{params.url}" \
+          | gunzip -c > "{output.fasta}" 2>> "{log}"
 
-        touch {output.done}
+        test -s "{output.fasta}"
         """
+
+rule download_gtf:
+    output:
+        gtf=config["ref"]["gtf"]
+    params:
+        url=config["ref"]["gtf_url"]
+    log:
+        "results/logs/ref/gtf.log"
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p "$(dirname "{output.gtf}")"
+        mkdir -p results/logs/ref
+
+        curl -L --fail --retry 10 --retry-delay 5 \
+          "{params.url}" \
+          | gunzip -c > "{output.gtf}" 2>> "{log}"
+
+        test -s "{output.gtf}"
+        """
+
+
+
+if BUILD_STAR_INDEX:
+    rule star_index:
+        input:
+            fasta=config["ref"]["genome_fasta"],
+            gtf=config["ref"]["gtf"]
+        output:
+            idx=directory(config["ref"]["star_index"]),
+            done="data/ref/star_index.done"
+        threads: STAR_THREADS
+        params:
+            sjdbOverhang=89
+        log:
+            "results/logs/ref/star_index.log"
+        shell:
+            r"""
+            set -euo pipefail
+            mkdir -p {output.idx}
+            mkdir -p results/logs/ref
+
+            STAR \
+              --runThreadN {threads} \
+              --runMode genomeGenerate \
+              --genomeDir {output.idx} \
+              --genomeFastaFiles {input.fasta} \
+              --sjdbGTFfile {input.gtf} \
+              --sjdbOverhang {params.sjdbOverhang} \
+              > {log} 2>&1
+
+            touch {output.done}
+            """
+else:
+    rule star_index_present:
+        output:
+            idx=directory(config["ref"]["star_index"]),
+            done="data/ref/star_index.done"
+        log:
+            "results/logs/ref/star_index_present.log"
+        shell:
+            r"""
+            set -euo pipefail
+            mkdir -p results/logs/ref
+            echo "[START] $(date)" > {log}
+
+            # Basic validation: directory exists and is not empty
+            test -d "{output.idx}"
+            ls -A "{output.idx}" >/dev/null
+
+            touch "{output.done}"
+            echo "[END] $(date)" >> {log}
+            """
+
+rule whitelist_present:
+    input:
+        wl=config["ref"]["whitelist"]
+    output:
+        done="data/ref/whitelist.done"
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p "$(dirname "{output.done}")"
+
+        test -s "{input.wl}"
+
+        touch "{output.done}"
+        """
+		
+
+# ---- Alignment / counting ----
 
 rule starsolo:
     threads: STAR_THREADS
@@ -140,7 +249,7 @@ rule starsolo:
         index_done="data/ref/star_index.done",
         r1=lambda wc: lane_fastqs(wc.donor, "R1"),
         r2=lambda wc: lane_fastqs(wc.donor, "R2"),
-        wl="data/ref/barcodes/3M-3pgex-may-2023_TRU.txt.gz",
+        wl=config["ref"]["whitelist"],
         wl_done="data/ref/whitelist.done",
         done="data/raw/{donor}/fastqs.done"
     output:
@@ -158,7 +267,7 @@ rule starsolo:
         # NOTE:
         # By default we disable BAM output to reduce memory and disk usage.
         # STARsolo still produces full gene-cell count matrices under:
-        #   Solo.out/Gene/{raw,filtered}/
+        #   Solo.out/Gene/{{raw,filtered}}/
         #
         # To enable BAMs for debugging/demo purposes, replace the line below with:
         #   --outSAMtype BAM SortedByCoordinate \
@@ -172,8 +281,10 @@ rule starsolo:
           --outFileNamePrefix {params.outdir}/ \
           --soloType CB_UMI_Simple \
           --soloCBwhitelist {input.wl} \
-          --soloCBstart 1 --soloCBlen 16 \
-          --soloUMIstart 17 --soloUMIlen 12 \
+		  --soloBarcodeMate 2 \
+		  --soloUMIlen 12 \
+		  --soloCBlen 16 \
+          --soloBarcodeReadLength 28 \
           --soloFeatures Gene \
           --outSAMtype None \
           > {log} 2>&1
@@ -181,82 +292,4 @@ rule starsolo:
         touch {output.done}
         """
 
-		
-rule download_barcode_whitelist:
-    output:
-        wl="data/ref/barcodes/3M-3pgex-may-2023_TRU.txt.gz"
-    log:
-        "results/logs/ref/barcodes.log"
-    shell:
-        r"""
-        set -euo pipefail
-        mkdir -p data/ref/barcodes
-        mkdir -p results/logs/ref
-
-        curl -L --fail --retry 10 --retry-delay 5 \
-          -o {output.wl} \
-          https://cf.10xgenomics.com/supp/cell-exp/barcodes/3M-3pgex-may-2023_TRU.txt.gz \
-          >> {log} 2>&1
-        """
-
-		
-rule whitelist_present:
-    input:
-        wl=config["ref"]["whitelist"]
-    output:
-        done=touch("data/ref/whitelist.done")
-    shell:
-        r"""
-        set -euo pipefail
-        test -s "{input.wl}"
-        touch "{output.done}"
-        """
-		
-rule download_genome_fasta:
-    output:
-        fa=config["ref"]["genome_fasta"]
-    params:
-        url=config["ref"]["genome_fasta_url"]
-    log:
-        "results/logs/ref/genome_fasta.log"
-    shell:
-        r"""
-        set -euo pipefail
-        mkdir -p $(dirname "{output.fa}")
-        mkdir -p results/logs/ref
-
-        echo "[START] $(date)" > "{log}"
-        echo "URL: {params.url}" >> "{log}"
-
-        tmp="{output.fa}.gz"
-        curl -L --fail --retry 10 --retry-delay 5 -o "$tmp" "{params.url}" >> "{log}" 2>&1
-        gunzip -f "$tmp" >> "{log}" 2>&1
-
-        test -s "{output.fa}"
-        echo "[END] $(date)" >> "{log}"
-        """
-
-rule download_gtf:
-    output:
-        gtf=config["ref"]["gtf"]
-    params:
-        url=config["ref"]["gtf_url"]
-    log:
-        "results/logs/ref/gtf.log"
-    shell:
-        r"""
-        set -euo pipefail
-        mkdir -p $(dirname "{output.gtf}")
-        mkdir -p results/logs/ref
-
-        echo "[START] $(date)" > "{log}"
-        echo "URL: {params.url}" >> "{log}"
-
-        tmp="{output.gtf}.gz"
-        curl -L --fail --retry 10 --retry-delay 5 -o "$tmp" "{params.url}" >> "{log}" 2>&1
-        gunzip -f "$tmp" >> "{log}" 2>&1
-
-        test -s "{output.gtf}"
-        echo "[END] $(date)" >> "{log}"
-        """
 
