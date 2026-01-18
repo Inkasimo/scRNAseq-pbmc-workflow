@@ -80,13 +80,7 @@ def main() -> int:
 
     sp_all = sub.add_parser("all", help="Run full workflow (explicit).")
     add_common(sp_all)
-    
-    sp_dl = sub.add_parser("download_data", help="Ensure FASTQs are present/downloaded (fastqs.done).")
-    add_common(sp_dl)
-
-    sp_dlqc = sub.add_parser("download_data_and_qc", help="Download/presence-check FASTQs, run FastQC, then MultiQC.")
-    add_common(sp_dlqc)
-
+   
 
     args = p.parse_args()
 
@@ -145,6 +139,18 @@ def main() -> int:
         smk.extend(["--set-threads", st])
     if args.section in ("download_data", "download_data_and_qc"):
         smk.extend(["--config", "io.download_fastqs=true"])
+    # Force STAR index build when running ref/all (or a dedicated command)
+    if args.section == "ref":
+        smk.extend([
+            "--config", "ref.build_star_index=true",
+        ])
+
+    if args.section == "all":
+        smk.extend([
+            "--config", "ref.build_star_index=true",
+            "--config", "io.download_fastqs=true",
+        ])
+
 
 
     # Targets go after `--` to keep parsing clean
