@@ -22,6 +22,12 @@ To enable it:
        wsl --shutdown
 4. Restart Docker Desktop
 
+## Barcode whitelist
+
+The 10x Genomics barcode whitelist (3M-3pgex-may-2023_TRU.txt) is included directly in this repository under resources/barcodes/.
+This is intentional: upstream 10x download URLs for barcode whitelists are unstable and frequently return HTTP 403 errors, which breaks fully automated workflows.
+Bundling the whitelist ensures the pipeline runs reproducibly without external dependencies.
+
 ### Running via wrapper
 ./run.sh build
 ./run.sh dry
