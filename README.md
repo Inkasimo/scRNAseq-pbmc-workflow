@@ -74,7 +74,8 @@ docker run --rm -it \
 
 ### Run alignment for one donor:
 
-```docker run --rm -it \
+```bash
+  docker run --rm -it \
   -v "$(pwd)":/work \
   -w /work \
   scrnaseq-workflow \
@@ -91,8 +92,9 @@ The wrapper provides:
 
 
 #### Wrapper requirements (host-side only)
-
-`pip install -r requirements-dev.txt`
+```bash
+pip install -r requirements-dev.txt
+```
 
 This installs:
 - pyyaml (used only by the wrapper)
@@ -101,22 +103,39 @@ If you do not use the wrapper, you can ignore this step entirely.
 
 
 List available sections:
-`python run_analysis.py --list-sections`
+```bash
+python run_analysis.py --list-sections
+```
 
 List donors:
-`python run_analysis.py --list-donors`
+
+```bash
+python run_analysis.py --list-donors
+```
 
 Download data:
-`python run_analysis.py download_data --cpus 8 --cores 8`
+
+```bash
+python run_analysis.py download_data --cpus 8 --cores 8
+```
 
 QC only:
-`python run_analysis.py qc --cpus 8 --cores 8`
+
+```bash
+python run_analysis.py qc --cpus 8 --cores 8
+```
 
 Align all donors:
-`python run_analysis.py align --donor all --cpus 8 --cores 8 --set-threads starsolo=8`
+
+```bash
+python run_analysis.py align --donor all --cpus 8 --cores 8 --set-threads starsolo=8`
+```
 
 Dry run:
-`python run_analysis.py all --dry-run`
+
+```bash
+python run_analysis.py all --dry-run
+```
 
 ### CPUs vs cores (Docker vs Snakemake)
 
@@ -143,27 +162,27 @@ and ensures fully reproducible execution.
 
 ## Repository structure
 
-├── containers/          # Dockerfile(s) for reproducible execution
-├── workflow/            # Snakemake workflow (rules, DAG)
-├── config/              # User-editable configuration (config.yaml)
-├── resources/           # Static resources bundled with the workflow
-│   └── barcodes/        # 10x barcode whitelist(s)
-├── data/                # Input data and references (not versioned)
-│   ├── raw/             # FASTQ files (downloaded or user-provided)
-│   └── ref/             # Reference genome, GTF, STAR index
-├── results/             # Outputs and logs (not versioned)
-│   ├── qc/              # FastQC / MultiQC reports
-│   ├── alignment/       # STARsolo outputs
-│   └── logs/            # Execution logs
-├── docs/                # Documentation (user manual, report, notes)
-├── scripts/             # Helper scripts (currently empty / reserved)
-└── run_analysis.py      # Optional Python wrapper for section-based execution
-
+```text
+containers/          # Dockerfile(s) for reproducible execution
+workflow/            # Snakemake workflow (rules, DAG)
+config/              # User-editable configuration (config.yaml)
+resources/            # Static resources bundled with the workflow
+  barcodes/           # 10x barcode whitelist(s)
+data/                # Input data and references (not versioned)
+  raw/                # FASTQ files (downloaded or user-provided)
+  ref/                # Reference genome, GTF, STAR index
+results/             # Outputs and logs (not versioned)
+  qc/                 # FastQC / MultiQC reports
+  alignment/           # STARsolo outputs
+  logs/                # Execution logs
+docs/                # Documentation (user manual, report, notes)
+scripts/             # Helper scripts (currently empty / reserved)
+run_analysis.py      # Optional Python wrapper for section-based execution
+```
 
 ## Notes
-
 - Large data files are excluded via `.gitignore`
 - FASTQ downloading is controlled via `io.download_fastqs`
 - STAR index requires ~25–30 GB RAM
-- Windows users: see `docs/wslconfig.example`
+
 
