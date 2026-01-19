@@ -17,25 +17,72 @@ pipeline.
 
 \textit{Also add my computer specs on the report}
 
-## 2. Repository Structure
-- containers/: Docker images for isolated execution
-- workflow/: Snakemake rules
-- scripts/: R/Python analysis scripts
-- config/: dataset and parameter configuration
-- data/: raw and intermediate data (not versioned)
-- results/: analysis outputs and logs (not versioned)
-- docs/: documentation and reports
+## 2. Execution environment
 
-## 3. Execution Model
+All computations were performed on a local workstation
+running Windows 11 with WSL2 and Docker Desktop.
+
+Due to the memory requirements of STAR genome indexing,
+the default WSL2 configuration was modified to allow
+up to 32 GB of RAM.
+
+Hardware:
+- CPU: …
+- RAM: …
+- Storage: …
+
+
+## 3. Repository Organization
+
+The repository is structured to separate execution logic, configuration,
+containerization, and generated data, following common best practices for
+reproducible computational workflows.
+
+- `containers/`  
+  Docker build context defining a fully self-contained execution environment,
+  including all bioinformatics tools and their exact versions.
+
+- `workflow/`  
+  Snakemake workflow definition, including rules for data acquisition,
+  quality control, reference preparation, and alignment.
+
+- `config/`  
+  User-editable configuration files controlling dataset paths, resource usage,
+  and execution toggles (e.g. downloading FASTQs vs. validating local files).
+
+- `resources/`  
+  Static, versioned resources required by the workflow.  
+  This includes the 10x Genomics barcode whitelist, which is bundled directly
+  to avoid reliance on unstable external download URLs.
+
+- `data/` *(not versioned)*  
+  Large input data and reference files generated or downloaded at runtime.
+  This includes raw FASTQs, reference genomes, annotations, and STAR indices.
+
+- `results/` *(not versioned)*  
+  All pipeline outputs, including QC reports, alignment results, and log files.
+  These are excluded from version control by design.
+
+- `docs/`  
+  Supplementary documentation, including the user manual and this report.
+
+- `scripts/`  
+  Reserved for future downstream analysis scripts (not yet implemented).
+
+- `run_analysis.py`  
+  A lightweight Python wrapper that orchestrates Snakemake execution inside
+  Docker, enabling section-based execution and preventing accidental full runs.
+
+## 4. Execution Model
 The pipeline is orchestrated using Snakemake and executed inside Docker
 containers to ensure reproducibility and avoid local environment drift.
 All analysis steps are executed via containerized tools.
 
-## 4. Data
+## 5. Data
 Raw FASTQ files are downloaded from 10x Genomics public PBMC datasets
 (donors 1–4, 3' Gene Expression chemistry).
 
-## 5. Quality Control (planned)
+## 6. Quality Control (planned)
 Raw FASTQ quality will be assessed using FastQC and summarized with MultiQC.
 Based on these results, a decision will be made whether explicit read trimming
 is required.
@@ -54,7 +101,7 @@ standard pipelines (e.g., Cell Ranger / STARsolo) are designed to tolerate modes
 artifacts via soft-clipping while preserving the read structure for accurate alignment 
 and UMI counting; therefore trimming was omitted unless strong adapter signal is observed.
 
-## 6. Alignment and Quantification (planned)
+## 7. Alignment and Quantification (planned)
 
 ### Choice of aligner: STARsolo vs Cell Ranger
 <1–2 paragraphs explaining transparency, control, reproducibility>
@@ -98,7 +145,7 @@ swap=16GB
 
 [RESULTS TO BE ADDED]
 
-## 7. Downstream Analysis (planned)
+## 8. Downstream Analysis (planned)
 - Cell filtering and normalization
 - Feature selection
 - DEG analysis between T-cells and B-cells
@@ -117,6 +164,7 @@ then take the edges that appear > 3 of networks..
 
 Think about it
 
-## 8. Reproducibility
+## 9. Reproducibility
 The full pipeline, including tool versions and execution steps, is available
 in the accompanying GitHub repository.
+

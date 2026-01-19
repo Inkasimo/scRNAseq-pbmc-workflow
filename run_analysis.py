@@ -22,6 +22,8 @@ SECTION_TARGETS = {
         "data/ref/whitelist.done",
         "data/ref/star_index.done",
     ],
+    "align":[],
+    
     "all": [],
 }
 
@@ -41,11 +43,26 @@ def run(cmd: list[str]) -> int:
     return subprocess.call(cmd)
 
 def main() -> int:
+    
     p = argparse.ArgumentParser(
-        prog="run_analysis.py",
-        description="Docker wrapper for Snakemake workflow. You must choose what to run."
+    prog="run_analysis.py",
+    description="Docker wrapper for Snakemake workflow. You must choose what to run."
     )
-    sub = p.add_subparsers(dest="section", required=True)
+
+    p.add_argument(
+        "--list-donors",
+        action="store_true",
+        help="List available donors from config file and exit."
+    )
+
+    p.add_argument(
+        "--list-sections",
+        action="store_true",
+        help="List available workflow sections and exit."
+    )
+    
+    sub = p.add_subparsers(dest="section")
+
 
     def add_common(sp: argparse.ArgumentParser) -> None:
         sp.add_argument("--image", default="scrnaseq-workflow", help="Docker image name/tag.")
@@ -83,6 +100,23 @@ def main() -> int:
    
 
     args = p.parse_args()
+    
+    # Handle informational commands
+    if args.list_sections:
+        print("Available sections:")
+        for s in SECTION_TARGETS.keys():
+            print(f"  - {s}")
+        return 0
+
+    if args.list_donors:
+        donors = load_donors("config/config.yaml")
+        print("Available donors:")
+        for d in donors:
+            print(f"  - {d}")
+        return 0
+        
+    if not args.section:
+        p.error("You must choose a section to run (or use --list-sections).")
 
     repo_root = Path.cwd()
     if not (repo_root / args.snakefile).exists():
