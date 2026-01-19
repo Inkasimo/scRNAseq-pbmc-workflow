@@ -128,7 +128,7 @@ python run_analysis.py qc --cpus 8 --cores 8
 Align all donors:
 
 ```bash
-python run_analysis.py align --donor all --cpus 8 --cores 8 --set-threads starsolo=8`
+python run_analysis.py align --donor all --cpus 8 --cores 8 --set-threads starsolo=8
 ```
 
 Dry run:
@@ -148,8 +148,28 @@ The wrapper exposes two separate parameters:
 - `--cores` / `-j`  
   Controls **Snakemake scheduling** (how many rules/jobs may run in parallel).
 
-In most cases, these values should be set to the same number.
-They are kept separate to allow fine-grained control (e.g. limiting the container to fewer CPUs than the host, or reserving cores for other workloads).
+- `-j / --jobs` (Snakemake):  
+  Maximum number of rules (jobs) that may run concurrently.
+
+In practice:
+- `--cores` limits **CPU usage**
+- `-j` limits **job-level parallelism**
+- A single job may use multiple threads (e.g. STARsolo)
+
+For STARsolo-heavy workloads, it is common to use:
+- `-j 1`
+- `--cores = --set-threads starsolo`
+
+If the resources allow you can run eg alignment in parallel: 
+
+```bash
+python run_analysis.py align \
+  --donor all \
+  --cpus 16 \
+  --cores 16 \
+  -j 2 \
+  --set-threads starsolo=8
+```
 
 ## Barcode whitelist
 
