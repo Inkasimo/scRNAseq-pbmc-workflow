@@ -51,16 +51,17 @@ You can run this workflow in **two ways**:
 ### Option A: Direct Snakemake (no wrapper)
 
 Dry run:
-`docker run --rm -it -v "$(pwd)":/work -w /work scrnaseq-workflow \`
-  `snakemake -n -p`
+
+```docker run --rm -it -v "$(pwd)":/work -w /work scrnaseq-workflow \ 
+snakemake -n -p```
 
 Run full workflow:
-`docker run --rm -it -v "$(pwd)":/work -w /work scrnaseq-workflow \`
-  `snakemake --cores 8 --rerun-incomplete`
+```docker run --rm -it -v "$(pwd)":/work -w /work scrnaseq-workflow \
+  snakemake --cores 8 --rerun-incomplete```
 
 Run alignment for one donor:
-`docker run --rm -it -v "$(pwd)":/work -w /work scrnaseq-workflow \`
-  `snakemake results/alignment/starsolo/donor1/starsolo.done`
+```docker run --rm -it -v "$(pwd)":/work -w /work scrnaseq-workflow \
+  `snakemake results/alignment/starsolo/donor1/starsolo.done```
 
 ### Option B: Python wrapper (recommended)
 
@@ -69,9 +70,10 @@ The wrapper provides:
 - explicit control (no accidental `rule all`)
 - simpler CLI for interactive work
 
+
 #### Wrapper requirements (host-side only)
 
-`pip install -r requirements-dev.txt`
+```pip install -r requirements-dev.txt```
 
 This installs:
 - pyyaml (used only by the wrapper)
@@ -80,22 +82,36 @@ If you do not use the wrapper, you can ignore this step entirely.
 
 
 List available sections:
-`python run_analysis.py --list-sections`
+```python run_analysis.py --list-sections```
 
 List donors:
-`python run_analysis.py --list-donors`
+```python run_analysis.py --list-donors```
 
 Download data:
-`python run_analysis.py download_data --cpus 8 --cores 8`
+```python run_analysis.py download_data --cpus 8 --cores 8```
 
 QC only:
-`python run_analysis.py qc --cpus 8 --cores 8`
+```python run_analysis.py qc --cpus 8 --cores 8```
 
 Align all donors:
-`python run_analysis.py align --donor all --cpus 8 --cores 8 --set-threads starsolo=8`
+```python run_analysis.py align --donor all --cpus 8 --cores 8 --set-threads starsolo=8```
 
 Dry run:
-`python run_analysis.py all --dry-run`
+```python run_analysis.py all --dry-run```
+
+### CPUs vs cores (Docker vs Snakemake)
+
+The wrapper exposes two separate parameters:
+
+- `--cpus`  
+  Controls the **Docker container CPU limit** (`docker run --cpus`).  
+  This is a hard upper bound on how many CPU cores *all processes inside the container combined* may use.
+
+- `--cores` / `-j`  
+  Controls **Snakemake scheduling** (how many rules/jobs may run in parallel).
+
+In most cases, these values should be set to the same number.
+They are kept separate to allow fine-grained control (e.g. limiting the container to fewer CPUs than the host, or reserving cores for other workloads).
 
 ## Barcode whitelist
 
