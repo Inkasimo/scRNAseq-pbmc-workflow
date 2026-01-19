@@ -19,17 +19,15 @@ This repository is intended as a **technical portfolio / learning project**.
 ### Required
 - Docker
 
-All core tools are provided inside the Docker image
+All core tools are provided inside the Docker image e.g.
 
-e.g.
+-Snakemake
 
-Snakemake
+-STAR
 
-STAR
+-FastQC
 
-FastQC
-
-MultiQC
+-MultiQC
 
 ### Optional (wrapper only)
 - Python ≥3.9
@@ -107,6 +105,25 @@ resources/barcodes/3M-3pgex-may-2023_TRU.txt
 
 This avoids reliance on unstable upstream URLs (frequent HTTP 403 errors)
 and ensures fully reproducible execution.
+
+## Repository structure
+
+├── containers/          # Dockerfile(s) for reproducible execution
+├── workflow/            # Snakemake workflow (rules, DAG)
+├── config/              # User-editable configuration (config.yaml)
+├── resources/           # Static resources bundled with the workflow
+│   └── barcodes/        # 10x barcode whitelist(s)
+├── data/                # Input data and references (not versioned)
+│   ├── raw/             # FASTQ files (downloaded or user-provided)
+│   └── ref/             # Reference genome, GTF, STAR index
+├── results/             # Outputs and logs (not versioned)
+│   ├── qc/              # FastQC / MultiQC reports
+│   ├── alignment/       # STARsolo outputs
+│   └── logs/            # Execution logs
+├── docs/                # Documentation (user manual, report, notes)
+├── scripts/             # Helper scripts (currently empty / reserved)
+└── run_analysis.py      # Optional Python wrapper for section-based execution
+
 
 ## Notes
 
