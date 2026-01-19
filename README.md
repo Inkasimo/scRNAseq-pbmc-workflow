@@ -50,18 +50,37 @@ You can run this workflow in **two ways**:
 
 ### Option A: Direct Snakemake (no wrapper)
 
-Dry run:
+#### Dry run
 
-```docker run --rm -it -v "$(pwd)":/work -w /work scrnaseq-workflow \ 
-snakemake -n -p```
+```bash
+docker run --rm -it \
+  -v "$(pwd)":/work \
+  -w /work \
+  scrnaseq-workflow \
+  snakemake -n -p
+  ```
 
-Run full workflow:
-```docker run --rm -it -v "$(pwd)":/work -w /work scrnaseq-workflow \
-  snakemake --cores 8 --rerun-incomplete```
 
-Run alignment for one donor:
-```docker run --rm -it -v "$(pwd)":/work -w /work scrnaseq-workflow \
-  `snakemake results/alignment/starsolo/donor1/starsolo.done```
+#### Run full workflow:
+
+```bash
+docker run --rm -it \
+  -v "$(pwd)":/work \
+  -w /work \
+  scrnaseq-workflow \
+  snakemake --cores 8 --rerun-incomplete
+  ```
+
+
+### Run alignment for one donor:
+
+```docker run --rm -it \
+  -v "$(pwd)":/work \
+  -w /work \
+  scrnaseq-workflow \
+  snakemake results/alignment/starsolo/donor1/starsolo.done
+  ```
+
 
 ### Option B: Python wrapper (recommended)
 
@@ -73,7 +92,7 @@ The wrapper provides:
 
 #### Wrapper requirements (host-side only)
 
-```pip install -r requirements-dev.txt```
+`pip install -r requirements-dev.txt`
 
 This installs:
 - pyyaml (used only by the wrapper)
@@ -82,22 +101,22 @@ If you do not use the wrapper, you can ignore this step entirely.
 
 
 List available sections:
-```python run_analysis.py --list-sections```
+`python run_analysis.py --list-sections`
 
 List donors:
-```python run_analysis.py --list-donors```
+`python run_analysis.py --list-donors`
 
 Download data:
-```python run_analysis.py download_data --cpus 8 --cores 8```
+`python run_analysis.py download_data --cpus 8 --cores 8`
 
 QC only:
-```python run_analysis.py qc --cpus 8 --cores 8```
+`python run_analysis.py qc --cpus 8 --cores 8`
 
 Align all donors:
-```python run_analysis.py align --donor all --cpus 8 --cores 8 --set-threads starsolo=8```
+`python run_analysis.py align --donor all --cpus 8 --cores 8 --set-threads starsolo=8`
 
 Dry run:
-```python run_analysis.py all --dry-run```
+`python run_analysis.py all --dry-run`
 
 ### CPUs vs cores (Docker vs Snakemake)
 
