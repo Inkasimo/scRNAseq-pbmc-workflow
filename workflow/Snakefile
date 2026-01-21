@@ -237,8 +237,7 @@ rule trim_fastqs:
     """
     input:
         raw_done="data/raw/{donor}/fastqs.done",
-        r1=lambda wc: sorted(glob.glob(f"{config['pbmc'][wc.donor]['fastq_dir']}/*_R1_*.fastq.gz")),
-        r2=lambda wc: sorted(glob.glob(f"{config['pbmc'][wc.donor]['fastq_dir']}/*_R2_*.fastq.gz")),
+        fqdir=lambda wc: config["pbmc"][wc.donor]["fastq_dir"],
     output:
         done="data/trimmed/{donor}/trim.done"
     threads: CUTADAPT_THREADS
@@ -253,19 +252,31 @@ rule trim_fastqs:
         import os
         from pathlib import Path
 
+        # Discover lane FASTQs at runtime (after raw_done is satisfied)
+        r1_files = sorted(glob.glob(f"{input.fqdir}/*_R1_*.fastq.gz"))
+        r2_files = sorted(glob.glob(f"{input.fqdir}/*_R2_*.fastq.gz"))
+
+        if not r1_files:
+            raise ValueError(f"{wildcards.donor}: no R1 files found in {input.fqdir} with pattern '*_R1_*.fastq.gz'")
+        if not r2_files:
+            raise ValueError(f"{wildcards.donor}: no R2 files found in {input.fqdir} with pattern '*_R2_*.fastq.gz'")
+
         # Basic sanity: same number of R1 and R2 lane files
-        if len(input.r1) != len(input.r2):
-            raise ValueError(f"{wildcards.donor}: mismatch R1({len(input.r1)}) vs R2({len(input.r2)}) files")
+        if len(r1_files) != len(r2_files):
+            raise ValueError(
+                f"{wildcards.donor}: mismatch R1({len(r1_files)}) vs R2({len(r2_files)}) files in {input.fqdir}"
+            )
 
         Path(params.outdir).mkdir(parents=True, exist_ok=True)
         Path(os.path.dirname(log)).mkdir(parents=True, exist_ok=True)
 
         with open(log, "w") as lf:
             lf.write(f"[START] donor={wildcards.donor}\n")
+            lf.write(f"fqdir={input.fqdir}\n")
             lf.write(f"adapter_r2={params.adapter_r2} q_r2={params.q_r2} minlen_r2={params.minlen_r2}\n")
 
         # Trim each lane pair, preserving basenames
-        for r1_in, r2_in in zip(input.r1, input.r2):
+        for r1_in, r2_in in zip(r1_files, r2_files):
             r1_base = os.path.basename(r1_in)
             r2_base = os.path.basename(r2_in)
 
@@ -274,17 +285,16 @@ rule trim_fastqs:
 
             cmd = [
                 "cutadapt",
-                "-A", params.adapter_r2,              # adapter on R2 only
-                "-q", f"0,{params.q_r2}",             # no Q-trim on R1, Q-trim on R2
-                "--minimum-length", f"0:{params.minlen_r2}",        # no minlen on R1, minlen on R2
-                "--pair-filter=any",                  # drop pair if R2 fails
+                "-A", params.adapter_r2,                   # adapter on R2 only
+                "-q", f"0,{params.q_r2}",                  # no Q-trim on R1, Q-trim on R2
+                "--minimum-length", f"0:{params.minlen_r2}",  # no minlen on R1, minlen on R2
+                "--pair-filter=any",                       # drop pair if R2 fails
                 "-j", str(threads),
                 "-o", r1_out,
                 "-p", r2_out,
                 r1_in, r2_in,
             ]
 
-            # Append to log
             with open(log, "a") as lf:
                 lf.write("CMD: " + " ".join(cmd) + "\n")
 
@@ -293,6 +303,7 @@ rule trim_fastqs:
         shell(f"touch {output.done}")
         with open(log, "a") as lf:
             lf.write("[END]\n")
+
 
 
 

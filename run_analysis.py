@@ -68,7 +68,8 @@ def main() -> int:
         sp.add_argument("-j", "--jobs", type=int, default=1)
         sp.add_argument("--set-threads", action="append", default=[])
         sp.add_argument("--dry-run", action="store_true")
-        sp.add_argument("--rerun-incomplete", action="store_true", default=True)
+        sp.add_argument("--rerun-incomplete", dest="rerun_incomplete", action="store_true", default=True)
+        sp.add_argument("--no-rerun-incomplete", dest="rerun_incomplete", action="store_false")
         sp.add_argument("--rerun-triggers", default="mtime")
         # IMPORTANT: --extra captures the rest; user should pass it LAST.
         sp.add_argument("--extra", nargs=argparse.REMAINDER)
@@ -112,6 +113,8 @@ def main() -> int:
         for d in load_donors("config/config.yaml"):
             print(d)
         return 0
+        
+
 
     if not args.section:
         p.error("You must choose a section to run.")

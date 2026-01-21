@@ -145,6 +145,50 @@ swap=16GB
 
 [RESULTS TO BE ADDED]
 
+## Trimming (cutadapt) Not default and not applied on this data but a possibility
+
+
+What trimming does in this workflow
+
+Only Read 2 (R2 / cDNA) is trimmed
+
+Read 1 (R1 / cell barcode + UMI) is left unchanged
+
+Trimming is performed with cutadapt
+
+If trimming is enabled, all downstream steps use trimmed FASTQs
+
+Trimmed FastQC / MultiQC
+
+STARsolo alignment into a separate trimmed/ results directory
+
+Trimming parameters (from config/config.yaml)
+trim:
+  enabled: false        # default; overridden by wrapper flags
+  adapter_r2: AGATCGGAAGAG
+  q_r2: 20
+  minlen_r2: 20
+
+
+Meaning:
+
+adapter_r2: adapter sequence removed from R2 only
+
+q_r2: quality trimming applied to R2 only
+
+minlen_r2: minimum length enforced on R2
+(read pairs are dropped if R2 fails)
+
+Output locations
+
+Trimmed FASTQs:
+data/trimmed/{donor}/*.fastq.gz
+
+Trimming completion marker:
+data/trimmed/{donor}/trim.done
+
+Original filenames and lane structure are preserved.
+
 ## 8. Downstream Analysis (planned)
 - Cell filtering and normalization
 - Feature selection

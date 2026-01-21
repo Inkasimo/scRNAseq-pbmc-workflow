@@ -262,10 +262,49 @@ python run_analysis.py align \
   --cpus 8 --cores 8 \
   --set-threads starsolo=8
 
-Run the full workflow (explicit)
+### Run the full workflow (explicit)
 python run_analysis.py all \
   --cpus 8 --cores 8
 
+
+### Run trimming only (all donors)
+python3 run_analysis.py trim \
+  --cpus 8 --cores 8
+
+### Run trimming + trimmed QC (FastQC + MultiQC)
+python3 run_analysis.py trim_and_qc \
+  --cpus 8 --cores 8
+
+
+Outputs:
+
+data/trimmed/{donor}/trim.done
+
+results/qc/fastqc/trimmed/{donor}/fastqc.done
+
+results/qc/multiqc/trimmed/multiqc_report.html
+
+### Run alignment on trimmed reads
+All donors
+python3 run_analysis.py align \
+  --donor all \
+  --trimmed \
+  --cpus 8 --cores 8
+
+### Selected donors
+python3 run_analysis.py align \
+  --donor donor1 \
+  --donor donor3 \
+  --trimmed \
+  --cpus 8 --cores 8
+
+###Run full workflow in trimmed mode
+
+Runs trimming, trimmed QC, and trimmed alignment.
+
+python3 run_analysis.py all \
+  --trimmed \
+  --cpus 8 --cores 8
 
 
 ## Barcode whitelist
