@@ -172,18 +172,13 @@ def main() -> int:
     for st in args.set_threads:
         smk.extend(["--set-threads", st])
     if args.section in ("download_data", "download_data_and_qc"):
-        smk.extend(["--config", "io.download_fastqs=true"])
+        smk.extend(["--config", "io={download_fastqs:true}"])
     # Force STAR index build when running ref/all (or a dedicated command)
     if args.section == "ref":
-        smk.extend([
-            "--config", "ref.build_star_index=true",
-        ])
+        smk.extend(["--config", "ref={build_star_index:true}"])
 
     if args.section == "all":
-        smk.extend([
-            "--config", "ref.build_star_index=true",
-            "--config", "io.download_fastqs=true",
-        ])
+        smk.extend(["--config", "io={download_fastqs:true}", "ref={build_star_index:true}"])
 
 
 
