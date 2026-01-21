@@ -26,6 +26,7 @@ SECTION_TARGETS = {
     ],
     "align": [],
     "all": [],
+    "all_no_download":[],
     "trim": [
         "data/trimmed/{donor}/trim.done",
     ],
@@ -100,6 +101,11 @@ def main() -> int:
     sp_all = sub.add_parser("all")
     sp_all.add_argument("--trimmed", action="store_true")
     add_common(sp_all)
+    
+    sp_all_no_download = sub.add_parser("all_no_download")
+    sp_all_no_download.add_argument("--trimmed", action="store_true")
+    add_common(sp_all_no_download)
+
 
     args = p.parse_args()
 
@@ -199,9 +205,10 @@ def main() -> int:
         smk.extend(targets)
 
     docker = [
-        "docker", "run", "--rm", "-it",
+        "docker", "run", "--rm", "-i",
         "--user", f"{os.getuid()}:{os.getgid()}",
         "-e", "HOME=/tmp",
+        "--init",
         "-e", "XDG_CACHE_HOME=/tmp/.cache",
         "-e", "XDG_CONFIG_HOME=/tmp/.config",
         "--cpus", str(args.cpus),
