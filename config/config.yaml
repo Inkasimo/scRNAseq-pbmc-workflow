@@ -15,9 +15,13 @@ pbmc:
 resources:
   fastqc_threads: 2
   star_threads: 8
+  cutadapt_threads: 4
 
 trim:
   enabled: false
+  adapter_r2: "AGATCGGAAGAG"
+  q_r2: 20
+  minlen_r2: 20
 
 io:
   # set true ONLY if you want Snakemake to download FASTQs.

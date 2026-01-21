@@ -1,31 +1,97 @@
 import glob
 from snakemake.io import directory
+from snakemake.shell import shell
 
 configfile: "config/config.yaml"
+
+
 
 DONORS = list(config["pbmc"].keys())
 FASTQC_THREADS = int(config.get("resources", {}).get("fastqc_threads", 2))
 STAR_THREADS = int(config.get("resources", {}).get("star_threads", 8))
 DOWNLOAD_FASTQS = bool(config.get("io", {}).get("download_fastqs", False))
 BUILD_STAR_INDEX = bool(config.get("ref", {}).get("build_star_index", True))
+CUTADAPT_THREADS = int(config.get("resources", {}).get("cutadapt_threads", 4))
+TRIM_R2_ADAPTER = str(config.get("trim", {}).get("adapter_r2", "AGATCGGAAGAG"))
+TRIM_R2_QUAL = int(config.get("trim", {}).get("q_r2", 20))
+TRIM_R2_MINLEN = int(config.get("trim", {}).get("minlen_r2", 20))
+
+
+def mode():
+    return "trimmed" if trim_enabled() else "raw"
+
+def fastq_dir(donor):
+    return f"data/trimmed/{donor}" if trim_enabled() else config["pbmc"][donor]["fastq_dir"]
+
+def starsolo_root():
+    return f"results/alignment/starsolo/{mode()}"
 
 
 def lane_fastqs(donor, read):
-    fqdir = config["pbmc"][donor]["fastq_dir"]
+    fqdir = fastq_dir(donor)
     pattern = f"{fqdir}/*_{read}_*.fastq.gz"
     files = sorted(glob.glob(pattern))
     if not files:
         raise ValueError(f"No {read} FASTQs found for {donor} with pattern: {pattern}")
     return files
 
+def trim_enabled():
+    # CLI override takes precedence
+    if "trim_enabled" in config:
+        v = config["trim_enabled"]
+        if isinstance(v, str):
+            return v.strip().lower() in ("1", "true", "t", "yes", "y", "on")
+        return bool(v)
+    return bool(config.get("trim", {}).get("enabled", False))
+
+
+def is_trimmed():
+    return trim_enabled()
+
+
+def starsolo_done(donor, mode):
+    return f"results/alignment/starsolo/{mode}/{donor}/starsolo.done"
+	
+def lane_fastqs_from_dir(fqdir, read):
+    pattern = f"{fqdir}/*_{read}_*.fastq.gz"
+    files = sorted(glob.glob(pattern))
+    if not files:
+        raise ValueError(f"No {read} FASTQs found with pattern: {pattern}")
+    return files
+
+
+
 
 rule all:
     input:
+        # Always ensure reference is present
+        "data/ref/star_index.done",
+        "data/ref/whitelist.done",
+
+        # Always ensure raw FASTQs are present (source for everything)
         expand("data/raw/{donor}/fastqs.done", donor=DONORS),
+
+        # Always run RAW QC
         expand("results/qc/fastqc/raw/{donor}/fastqc.done", donor=DONORS),
         "results/qc/multiqc/raw/multiqc_report.html",
-        "data/ref/star_index.done",
-        expand("results/alignment/starsolo/{donor}/starsolo.done", donor=DONORS)
+
+        # If trimmed mode: also run trimming + TRIMMED QC
+        expand("data/trimmed/{donor}/trim.done", donor=DONORS) if is_trimmed() else [],
+        expand("results/qc/fastqc/trimmed/{donor}/fastqc.done", donor=DONORS) if is_trimmed() else [],
+        "results/qc/multiqc/trimmed/multiqc_report.html" if is_trimmed() else [],
+
+        # Alignment:
+        # - raw mode -> align raw
+        # - trimmed mode -> align trimmed ONLY
+        expand(
+            "results/alignment/starsolo/{m}/{donor}/starsolo.done",
+            donor=DONORS,
+            m=["trimmed"] if is_trimmed() else ["raw"],
+        ),
+
+
+
+
 
 
 # ---- FASTQ acquisition: optional download vs presence check ----
@@ -105,6 +171,27 @@ rule fastqc_raw:
         echo "[END] $(date)" >> {log}
         """
 
+rule fastqc_trimmed:
+    input:
+        "data/trimmed/{donor}/trim.done"
+    output:
+        "results/qc/fastqc/trimmed/{donor}/fastqc.done"
+    threads: FASTQC_THREADS
+    params:
+        fqdir=lambda wc: f"{config.get('trim', {}).get('out_dir', 'data/trimmed')}/{wc.donor}"
+    log:
+        "results/logs/qc/fastqc_trimmed_{donor}.log"
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p results/qc/fastqc/trimmed/{wildcards.donor} results/logs/qc
+        echo "[START] $(date)" > {log}
+        find "{params.fqdir}" -type f -name "*.fastq.gz" -print0 \
+          | xargs -0 -r -n 1 -P {threads} fastqc -o results/qc/fastqc/trimmed/{wildcards.donor} >> {log} 2>&1
+        touch {output}
+        echo "[END] $(date)" >> {log}
+        """
+
 
 
 rule multiqc_raw:
@@ -125,6 +212,88 @@ rule multiqc_raw:
             -o results/qc/multiqc/raw >> {log} 2>&1
         echo "[END] $(date)" >> {log}
         """
+		
+rule multiqc_trimmed:
+    input:
+        expand("results/qc/fastqc/trimmed/{donor}/fastqc.done", donor=DONORS)
+    output:
+        "results/qc/multiqc/trimmed/multiqc_report.html"
+    log:
+        "results/logs/qc/multiqc_trimmed.log"
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p results/qc/multiqc/trimmed results/logs/qc
+        echo "[START] $(date)" > {log}
+        multiqc results/qc/fastqc/trimmed -o results/qc/multiqc/trimmed >> {log} 2>&1
+        echo "[END] $(date)" >> {log}
+        """
+
+
+rule trim_fastqs:
+    """
+    Trim only Read2 (cDNA) while keeping Read1 (CB+UMI) intact.
+    Outputs are written to data/trimmed/{donor}/ with the same basenames.
+    """
+    input:
+        raw_done="data/raw/{donor}/fastqs.done",
+        r1=lambda wc: sorted(glob.glob(f"{config['pbmc'][wc.donor]['fastq_dir']}/*_R1_*.fastq.gz")),
+        r2=lambda wc: sorted(glob.glob(f"{config['pbmc'][wc.donor]['fastq_dir']}/*_R2_*.fastq.gz")),
+    output:
+        done="data/trimmed/{donor}/trim.done"
+    threads: CUTADAPT_THREADS
+    log:
+        "results/logs/trim/cutadapt_{donor}.log"
+    params:
+        outdir=lambda wc: f"data/trimmed/{wc.donor}",
+        adapter_r2=TRIM_R2_ADAPTER,
+        q_r2=TRIM_R2_QUAL,
+        minlen_r2=TRIM_R2_MINLEN,
+    run:
+        import os
+        from pathlib import Path
+
+        # Basic sanity: same number of R1 and R2 lane files
+        if len(input.r1) != len(input.r2):
+            raise ValueError(f"{wildcards.donor}: mismatch R1({len(input.r1)}) vs R2({len(input.r2)}) files")
+
+        Path(params.outdir).mkdir(parents=True, exist_ok=True)
+        Path(os.path.dirname(log)).mkdir(parents=True, exist_ok=True)
+
+        with open(log, "w") as lf:
+            lf.write(f"[START] donor={wildcards.donor}\n")
+            lf.write(f"adapter_r2={params.adapter_r2} q_r2={params.q_r2} minlen_r2={params.minlen_r2}\n")
+
+        # Trim each lane pair, preserving basenames
+        for r1_in, r2_in in zip(input.r1, input.r2):
+            r1_base = os.path.basename(r1_in)
+            r2_base = os.path.basename(r2_in)
+
+            r1_out = str(Path(params.outdir) / r1_base)
+            r2_out = str(Path(params.outdir) / r2_base)
+
+            cmd = [
+                "cutadapt",
+                "-A", params.adapter_r2,              # adapter on R2 only
+                "-q", f"0,{params.q_r2}",             # no Q-trim on R1, Q-trim on R2
+                "--minimum-length", f"0:{params.minlen_r2}",        # no minlen on R1, minlen on R2
+                "--pair-filter=any",                  # drop pair if R2 fails
+                "-j", str(threads),
+                "-o", r1_out,
+                "-p", r2_out,
+                r1_in, r2_in,
+            ]
+
+            # Append to log
+            with open(log, "a") as lf:
+                lf.write("CMD: " + " ".join(cmd) + "\n")
+
+            shell(" ".join(cmd) + f" >> {log} 2>&1")
+
+        shell(f"touch {output.done}")
+        with open(log, "a") as lf:
+            lf.write("[END]\n")
+
 
 
 # ---- Reference / index ----
@@ -240,22 +409,25 @@ rule whitelist_present:
 
 # ---- Alignment / counting ----
 
-rule starsolo:
+def starsolo_mode():
+    return "trimmed" if is_trimmed() else "raw"
+
+rule starsolo_raw:
     threads: STAR_THREADS
     log:
-        "results/logs/alignment/starsolo_{donor}.log"
+        "results/logs/alignment/starsolo_raw_{donor}.log"
     input:
         idx=config["ref"]["star_index"],
         index_done="data/ref/star_index.done",
-        r1=lambda wc: lane_fastqs(wc.donor, "R1"),
-        r2=lambda wc: lane_fastqs(wc.donor, "R2"),
         wl=config["ref"]["whitelist"],
         wl_done="data/ref/whitelist.done",
-        done="data/raw/{donor}/fastqs.done"
+        fastqs_done="data/raw/{donor}/fastqs.done",
+        r1=lambda wc: lane_fastqs_from_dir(config["pbmc"][wc.donor]["fastq_dir"], "R1"),
+        r2=lambda wc: lane_fastqs_from_dir(config["pbmc"][wc.donor]["fastq_dir"], "R2"),
     output:
-        done="results/alignment/starsolo/{donor}/starsolo.done"
+        done="results/alignment/starsolo/raw/{donor}/starsolo.done"
     params:
-        outdir=lambda wc: f"results/alignment/starsolo/{wc.donor}",
+        outdir="results/alignment/starsolo/raw/{donor}",
         r1=lambda wc, input: ",".join(input.r1),
         r2=lambda wc, input: ",".join(input.r2)
     shell:
@@ -263,15 +435,6 @@ rule starsolo:
         set -euo pipefail
         mkdir -p {params.outdir}
         mkdir -p results/logs/alignment
-
-        # NOTE:
-        # By default we disable BAM output to reduce memory and disk usage.
-        # STARsolo still produces full gene-cell count matrices under:
-        #   Solo.out/Gene/{{raw,filtered}}/
-        #
-        # To enable BAMs for debugging/demo purposes, replace the line below with:
-        #   --outSAMtype BAM SortedByCoordinate \
-        # (optionally also add --limitBAMsortRAM <bytes> to cap memory)
 
         STAR \
           --runThreadN {threads} \
@@ -281,9 +444,9 @@ rule starsolo:
           --outFileNamePrefix {params.outdir}/ \
           --soloType CB_UMI_Simple \
           --soloCBwhitelist {input.wl} \
-		  --soloBarcodeMate 2 \
-		  --soloUMIlen 12 \
-		  --soloCBlen 16 \
+          --soloBarcodeMate 2 \
+          --soloUMIlen 12 \
+          --soloCBlen 16 \
           --soloBarcodeReadLength 28 \
           --soloFeatures Gene \
           --outSAMtype None \
@@ -293,3 +456,50 @@ rule starsolo:
         """
 
 
+rule starsolo_trimmed:
+    threads: STAR_THREADS
+    log:
+        "results/logs/alignment/starsolo_trimmed_{donor}.log"
+    input:
+        idx=config["ref"]["star_index"],
+        index_done="data/ref/star_index.done",
+        wl=config["ref"]["whitelist"],
+        wl_done="data/ref/whitelist.done",
+        trim_done="data/trimmed/{donor}/trim.done",
+    output:
+        done="results/alignment/starsolo/trimmed/{donor}/starsolo.done"
+    params:
+        outdir="results/alignment/starsolo/trimmed/{donor}",
+        fqdir="data/trimmed/{donor}",
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p {params.outdir}
+        mkdir -p results/logs/alignment
+
+        # Build comma-separated lane lists at runtime (AFTER trimming has run)
+        R1="$(ls {params.fqdir}/*_R1_*.fastq.gz | paste -sd, -)"
+        R2="$(ls {params.fqdir}/*_R2_*.fastq.gz | paste -sd, -)"
+
+        # Hard fail with a clear message if still missing
+        test -n "$R1"
+        test -n "$R2"
+
+        STAR \
+          --runThreadN {threads} \
+          --genomeDir {input.idx} \
+          --readFilesIn "$R2" "$R1" \
+          --readFilesCommand zcat \
+          --outFileNamePrefix {params.outdir}/ \
+          --soloType CB_UMI_Simple \
+          --soloCBwhitelist {input.wl} \
+          --soloBarcodeMate 2 \
+          --soloUMIlen 12 \
+          --soloCBlen 16 \
+          --soloBarcodeReadLength 28 \
+          --soloFeatures Gene \
+          --outSAMtype None \
+          > {log} 2>&1
+
+        touch {output.done}
+        """
