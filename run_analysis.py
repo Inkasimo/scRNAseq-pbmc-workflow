@@ -173,10 +173,10 @@ def main() -> int:
         config_overrides.append("trim_enabled=true")
 
     if args.section in ("download_data", "download_data_and_qc", "all"):
-        config_overrides.append("io={download_fastqs:true}")
+        config_overrides.append("download_fastqs=true")
 
     if args.section in ("ref", "all"):
-        config_overrides.append("ref={build_star_index:true}")
+        config_overrides.append("build_star_index=true")
 
     if config_overrides:
         smk.append("--config")

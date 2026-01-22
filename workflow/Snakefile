@@ -9,12 +9,28 @@ configfile: "config/config.yaml"
 DONORS = list(config["pbmc"].keys())
 FASTQC_THREADS = int(config.get("resources", {}).get("fastqc_threads", 2))
 STAR_THREADS = int(config.get("resources", {}).get("star_threads", 8))
-DOWNLOAD_FASTQS = bool(config.get("io", {}).get("download_fastqs", False))
-BUILD_STAR_INDEX = bool(config.get("ref", {}).get("build_star_index", True))
 CUTADAPT_THREADS = int(config.get("resources", {}).get("cutadapt_threads", 4))
 TRIM_R2_ADAPTER = str(config.get("trim", {}).get("adapter_r2", "AGATCGGAAGAG"))
 TRIM_R2_QUAL = int(config.get("trim", {}).get("q_r2", 20))
 TRIM_R2_MINLEN = int(config.get("trim", {}).get("minlen_r2", 20))
+
+
+def as_bool(x, default=False):
+    if x is None:
+        return default
+    if isinstance(x, bool):
+        return x
+    if isinstance(x, (int, float)):
+        return bool(x)
+    if isinstance(x, str):
+        return x.strip().lower() in ("1", "true", "t", "yes", "y", "on")
+    return bool(x)
+
+DOWNLOAD_FASTQS = as_bool(config.get("download_fastqs", None),
+                         default=as_bool(config.get("io", {}).get("download_fastqs", False)))
+
+BUILD_STAR_INDEX = as_bool(config.get("build_star_index", None),
+                           default=as_bool(config.get("ref", {}).get("build_star_index", True)))
 
 
 def mode():
@@ -231,19 +247,15 @@ rule multiqc_trimmed:
 
 
 rule trim_fastqs:
-    """
-    Trim only Read2 (cDNA) while keeping Read1 (CB+UMI) intact.
-    Outputs are written to data/trimmed/{donor}/ with the same basenames.
-    """
     input:
         raw_done="data/raw/{donor}/fastqs.done",
-        fqdir=lambda wc: config["pbmc"][wc.donor]["fastq_dir"],
     output:
         done="data/trimmed/{donor}/trim.done"
     threads: CUTADAPT_THREADS
     log:
         "results/logs/trim/cutadapt_{donor}.log"
     params:
+        fqdir=lambda wc: config["pbmc"][wc.donor]["fastq_dir"],
         outdir=lambda wc: f"data/trimmed/{wc.donor}",
         adapter_r2=TRIM_R2_ADAPTER,
         q_r2=TRIM_R2_QUAL,
@@ -252,30 +264,23 @@ rule trim_fastqs:
         import os
         from pathlib import Path
 
-        # Discover lane FASTQs at runtime (after raw_done is satisfied)
-        r1_files = sorted(glob.glob(f"{input.fqdir}/*_R1_*.fastq.gz"))
-        r2_files = sorted(glob.glob(f"{input.fqdir}/*_R2_*.fastq.gz"))
+        r1_files = sorted(glob.glob(f"{params.fqdir}/*_R1_*.fastq.gz"))
+        r2_files = sorted(glob.glob(f"{params.fqdir}/*_R2_*.fastq.gz"))
 
         if not r1_files:
-            raise ValueError(f"{wildcards.donor}: no R1 files found in {input.fqdir} with pattern '*_R1_*.fastq.gz'")
+            raise ValueError(f"{wildcards.donor}: no R1 files found in {params.fqdir}")
         if not r2_files:
-            raise ValueError(f"{wildcards.donor}: no R2 files found in {input.fqdir} with pattern '*_R2_*.fastq.gz'")
-
-        # Basic sanity: same number of R1 and R2 lane files
+            raise ValueError(f"{wildcards.donor}: no R2 files found in {params.fqdir}")
         if len(r1_files) != len(r2_files):
-            raise ValueError(
-                f"{wildcards.donor}: mismatch R1({len(r1_files)}) vs R2({len(r2_files)}) files in {input.fqdir}"
-            )
+            raise ValueError(f"{wildcards.donor}: mismatch R1({len(r1_files)}) vs R2({len(r2_files)}) in {params.fqdir}")
 
         Path(params.outdir).mkdir(parents=True, exist_ok=True)
         Path(os.path.dirname(log)).mkdir(parents=True, exist_ok=True)
 
         with open(log, "w") as lf:
             lf.write(f"[START] donor={wildcards.donor}\n")
-            lf.write(f"fqdir={input.fqdir}\n")
-            lf.write(f"adapter_r2={params.adapter_r2} q_r2={params.q_r2} minlen_r2={params.minlen_r2}\n")
+            lf.write(f"fqdir={params.fqdir}\n")
 
-        # Trim each lane pair, preserving basenames
         for r1_in, r2_in in zip(r1_files, r2_files):
             r1_base = os.path.basename(r1_in)
             r2_base = os.path.basename(r2_in)
@@ -285,24 +290,19 @@ rule trim_fastqs:
 
             cmd = [
                 "cutadapt",
-                "-A", params.adapter_r2,                   # adapter on R2 only
-                "-q", f"0,{params.q_r2}",                  # no Q-trim on R1, Q-trim on R2
-                "--minimum-length", f"0:{params.minlen_r2}",  # no minlen on R1, minlen on R2
-                "--pair-filter=any",                       # drop pair if R2 fails
+                "-A", params.adapter_r2,
+                "-q", f"0,{params.q_r2}",
+                "--minimum-length", f"0:{params.minlen_r2}",
+                "--pair-filter=any",
                 "-j", str(threads),
                 "-o", r1_out,
                 "-p", r2_out,
                 r1_in, r2_in,
             ]
-
-            with open(log, "a") as lf:
-                lf.write("CMD: " + " ".join(cmd) + "\n")
-
             shell(" ".join(cmd) + f" >> {log} 2>&1")
 
         shell(f"touch {output.done}")
-        with open(log, "a") as lf:
-            lf.write("[END]\n")
+
 
 
 
