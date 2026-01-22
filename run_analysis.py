@@ -34,6 +34,9 @@ SECTION_TARGETS = {
         "data/trimmed/{donor}/trim.done",
         "results/qc/fastqc/trimmed/{donor}/fastqc.done",
         "results/qc/multiqc/trimmed/multiqc_report.html",
+        "results/qc/fastqc/raw/{donor}/fastqc.done",
+        "results/qc/multiqc/raw/multiqc_report.html",
+        
     ],
 }
 
