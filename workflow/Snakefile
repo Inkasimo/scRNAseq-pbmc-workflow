@@ -264,6 +264,8 @@ rule trim_fastqs:
         import os
         from pathlib import Path
 
+        log_path = str(log[0])
+
         r1_files = sorted(glob.glob(f"{params.fqdir}/*_R1_*.fastq.gz"))
         r2_files = sorted(glob.glob(f"{params.fqdir}/*_R2_*.fastq.gz"))
 
@@ -272,12 +274,14 @@ rule trim_fastqs:
         if not r2_files:
             raise ValueError(f"{wildcards.donor}: no R2 files found in {params.fqdir}")
         if len(r1_files) != len(r2_files):
-            raise ValueError(f"{wildcards.donor}: mismatch R1({len(r1_files)}) vs R2({len(r2_files)}) in {params.fqdir}")
+            raise ValueError(
+                f"{wildcards.donor}: mismatch R1({len(r1_files)}) vs R2({len(r2_files)}) in {params.fqdir}"
+            )
 
         Path(params.outdir).mkdir(parents=True, exist_ok=True)
-        Path(os.path.dirname(log)).mkdir(parents=True, exist_ok=True)
+        Path(os.path.dirname(log_path)).mkdir(parents=True, exist_ok=True)
 
-        with open(log, "w") as lf:
+        with open(log_path, "w") as lf:
             lf.write(f"[START] donor={wildcards.donor}\n")
             lf.write(f"fqdir={params.fqdir}\n")
 
@@ -299,7 +303,8 @@ rule trim_fastqs:
                 "-p", r2_out,
                 r1_in, r2_in,
             ]
-            shell(" ".join(cmd) + f" >> {log} 2>&1")
+
+            shell(" ".join(cmd) + f" >> {log_path} 2>&1")
 
         shell(f"touch {output.done}")
 
