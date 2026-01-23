@@ -290,6 +290,7 @@ rule trim_fastqs:
         adapter_r2=TRIM_R2_ADAPTER,
         q_r2=TRIM_R2_QUAL,
         minlen_r2=TRIM_R2_MINLEN,
+
     run:
         import os
         from pathlib import Path
@@ -315,30 +316,60 @@ rule trim_fastqs:
             lf.write(f"[START] donor={wildcards.donor}\n")
             lf.write(f"fqdir={params.fqdir}\n")
 
-        for r1_in, r2_in in zip(r1_files, r2_files):
-            r1_base = os.path.basename(r1_in)
-            r2_base = os.path.basename(r2_in)
+        # Track temp outputs so we can clean them if anything fails
+        tmp_outputs = []
 
-            r1_out = str(Path(params.outdir) / r1_base)
-            r2_out = str(Path(params.outdir) / r2_base)
+        try:
+            for r1_in, r2_in in zip(r1_files, r2_files):
+                r1_base = os.path.basename(r1_in)
+                r2_base = os.path.basename(r2_in)
 
-            cmd = [
-                "cutadapt",
-                "-A", params.adapter_r2,
-                "-q", f"0,{params.q_r2}",
-                "--minimum-length", f"0:{params.minlen_r2}",
-                "--pair-filter=any",
-                "-j", str(threads),
-                "-o", r1_out,
-                "-p", r2_out,
-                r1_in, r2_in,
-            ]
+                r1_out = str(Path(params.outdir) / r1_base)
+                r2_out = str(Path(params.outdir) / r2_base)
 
-            shell(" ".join(cmd) + f" >> {log_path} 2>&1")
+                # Write to temp files first
+                r1_tmp = r1_out + ".tmp"
+                r2_tmp = r2_out + ".tmp"
+                tmp_outputs.extend([r1_tmp, r2_tmp])
 
-        touch_done_atomic(output.done)
+                # Ensure no stale tmp from a previous crash
+                for p in (r1_tmp, r2_tmp):
+                    try:
+                        os.remove(p)
+                    except FileNotFoundError:
+                        pass
+
+                cmd = [
+                    "cutadapt",
+                    "-A", params.adapter_r2,              # adapter trim on R2 only
+                    "-q", "0",                            # no quality trimming on R1 (and sets global to none)
+                    "-Q", f"0,{params.q_r2}",              # quality trim on R2 only (3' Q cutoff)
+                    "--minimum-length", f"0:{params.minlen_r2}",  # min length on R2 only
+                    "--pair-filter=any",
+                    "-j", str(threads),
+                    "-o", r1_tmp,
+                    "-p", r2_tmp,
+                    r1_in, r2_in,
+                ]
 
 
+                shell(" ".join(cmd) + f" >> {log_path} 2>&1")
+
+                # Atomic-ish publish: only now move temp -> final
+                os.replace(r1_tmp, r1_out)
+                os.replace(r2_tmp, r2_out)
+
+            # Only create sentinel after all lanes succeeded and were published
+            touch_done_atomic(output.done)
+
+        except Exception:
+            # Best-effort cleanup of temp files if something failed mid-run
+            for p in tmp_outputs:
+                try:
+                    os.remove(p)
+                except FileNotFoundError:
+                    pass
+            raise
 
 
 

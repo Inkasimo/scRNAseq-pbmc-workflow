@@ -38,6 +38,9 @@ SECTION_TARGETS = {
         "results/qc/multiqc/raw/multiqc_report.html",
         
     ],
+
+    "unlock": [],
+
 }
 
 def load_donors(configfile: str) -> list[str]:
@@ -109,6 +112,10 @@ def main() -> int:
     sp_all_no_download.add_argument("--trimmed", action="store_true")
     add_common(sp_all_no_download)
 
+    sp_unlock = sub.add_parser("unlock")
+    add_common(sp_unlock)
+
+
 
     args = p.parse_args()
 
@@ -152,8 +159,11 @@ def main() -> int:
         donors_for_align = load_donors(args.configfile) if args.donor == ["all"] else args.donor
         mode_dir = "trimmed" if getattr(args, "trimmed", False) else "raw"
         targets = [f"results/alignment/starsolo/{mode_dir}/{d}/starsolo.done" for d in donors_for_align]
-    elif args.section == "all":
+    
+    elif args.section in ("all", "all_no_download"):
         targets = []
+
+
 
     # Build snakemake command
     smk: list[str] = [
@@ -183,6 +193,10 @@ def main() -> int:
 
     if args.section in ("ref", "all"):
         config_overrides.append("build_star_index=true")
+    
+    if args.section == "all_no_download":
+        config_overrides.append("download_fastqs=false")
+
 
     if config_overrides:
         smk.append("--config")
@@ -209,20 +223,30 @@ def main() -> int:
         smk.append("--")
         smk.extend(targets)
 
-    docker = [
-        "docker", "run", "--rm", "-i",
-        "--user", f"{os.getuid()}:{os.getgid()}",
-        "-e", "HOME=/tmp",
-        "--init",
-        "-e", "XDG_CACHE_HOME=/tmp/.cache",
-        "-e", "XDG_CONFIG_HOME=/tmp/.config",
-        "--cpus", str(args.cpus),
-        "-v", f"{str(repo_root)}:/work",
-        "-w", "/work",
-        args.image,
-    ]
+    if args.section == "unlock":
+        # Build snakemake unlock command
+        smk: list[str] = [
+            "snakemake",
+            "-s", args.snakefile,
+            "--configfile", args.configfile,
+            "--unlock",
+        ]
 
-    return run(docker + smk)
+        docker = [
+            "docker", "run", "--rm", "-i",
+            "--user", f"{os.getuid()}:{os.getgid()}",
+            "-e", "HOME=/tmp",
+            "--init",
+            "-e", "XDG_CACHE_HOME=/tmp/.cache",
+            "-e", "XDG_CONFIG_HOME=/tmp/.config",
+            "--cpus", str(args.cpus),
+            "-v", f"{str(repo_root)}:/work",
+            "-w", "/work",
+            args.image,
+        ]
+
+        return run(docker + smk)
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

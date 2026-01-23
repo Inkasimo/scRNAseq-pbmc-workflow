@@ -1,17 +1,10 @@
 pbmc:
   donor1:
-    url: "https://cf.10xgenomics.com/samples/cell-exp/9.0.0/5k_Human_Donor1_PBMC_3p_gem-x_Multiplex/5k_Human_Donor1_PBMC_3p_gem-x_Multiplex_fastqs.tar"
-    fastq_dir: "data/raw/donor1/5k_Human_Donor1_PBMC_3p_gem-x_GEX_fastqs"
+    url: "https://cf.10xgenomics.com/samples/cell-exp/3.0.0/pbmc_1k_v3/pbmc_1k_v3_fastqs.tar"
+    fastq_dir: "data/raw/donor1/pbmc_1k_v3_fastqs"
   donor2:
-    url: "https://cf.10xgenomics.com/samples/cell-exp/9.0.0/5k_Human_Donor2_PBMC_3p_gem-x_Multiplex/5k_Human_Donor2_PBMC_3p_gem-x_Multiplex_fastqs.tar"
-    fastq_dir: "data/raw/donor2/5k_Human_Donor2_PBMC_3p_gem-x_GEX_fastqs"
-  donor3:
-    url: "https://cf.10xgenomics.com/samples/cell-exp/9.0.0/5k_Human_Donor3_PBMC_3p_gem-x_Multiplex/5k_Human_Donor3_PBMC_3p_gem-x_Multiplex_fastqs.tar"
-    fastq_dir: "data/raw/donor3/5k_Human_Donor3_PBMC_3p_gem-x_GEX_fastqs"
-  donor4:
-    url: "https://cf.10xgenomics.com/samples/cell-exp/9.0.0/5k_Human_Donor4_PBMC_3p_gem-x_Multiplex/5k_Human_Donor4_PBMC_3p_gem-x_Multiplex_fastqs.tar"
-    fastq_dir: "data/raw/donor4/5k_Human_Donor4_PBMC_3p_gem-x_GEX_fastqs"
-
+    url: "https://cf.10xgenomics.com/samples/cell-exp/3.0.0/pbmc_1k_v3/pbmc_1k_v3_fastqs.tar"
+    fastq_dir: "data/raw/donor2/pbmc_1k_v3_fastqs"
 resources:
   fastqc_threads: 2
   star_threads: 8
@@ -21,7 +14,7 @@ trim:
   enabled: false
   adapter_r2: "AGATCGGAAGAG"
   q_r2: 20
-  minlen_r2: 20
+  minlen_r2: 60
 
 io:
   # set true ONLY if you want Snakemake to download FASTQs.
