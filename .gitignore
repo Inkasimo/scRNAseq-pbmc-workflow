@@ -10,3 +10,6 @@ __pycache__/
 .Rproj.user/
 .vscode/
 .DS_Store
+java/
+.java/
+config/config.yaml
