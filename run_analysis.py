@@ -218,34 +218,37 @@ def main() -> int:
             extra = extra[1:]
         smk.extend(extra)
 
-    # Targets MUST be separated by '--' (prevents --rerun-triggers from eating them)
+        # Targets MUST be separated by '--' (prevents --rerun-triggers from eating them)
     if targets:
         smk.append("--")
         smk.extend(targets)
 
+    docker = [
+        "docker", "run", "--rm", "-i",
+        "--user", f"{os.getuid()}:{os.getgid()}",
+        "-e", "HOME=/tmp",
+        "--init",
+        "-e", "XDG_CACHE_HOME=/tmp/.cache",
+        "-e", "XDG_CONFIG_HOME=/tmp/.config",
+        "--cpus", str(args.cpus),
+        "-v", f"{str(repo_root)}:/work",
+        "-w", "/work",
+        args.image,
+    ]
+
     if args.section == "unlock":
-        # Build snakemake unlock command
-        smk: list[str] = [
+        smk = [
             "snakemake",
             "-s", args.snakefile,
             "--configfile", args.configfile,
             "--unlock",
         ]
-
-        docker = [
-            "docker", "run", "--rm", "-i",
-            "--user", f"{os.getuid()}:{os.getgid()}",
-            "-e", "HOME=/tmp",
-            "--init",
-            "-e", "XDG_CACHE_HOME=/tmp/.cache",
-            "-e", "XDG_CONFIG_HOME=/tmp/.config",
-            "--cpus", str(args.cpus),
-            "-v", f"{str(repo_root)}:/work",
-            "-w", "/work",
-            args.image,
-        ]
-
         return run(docker + smk)
+
+    # NORMAL PATH: run whatever smk you already built above
+    return run(docker + smk)
+
+
 
 
 if __name__ == "__main__":
