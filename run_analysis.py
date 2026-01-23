@@ -72,8 +72,8 @@ def main() -> int:
         sp.add_argument("-j", "--jobs", type=int, default=1)
         sp.add_argument("--set-threads", action="append", default=[])
         sp.add_argument("--dry-run", action="store_true")
-        sp.add_argument("--rerun-incomplete", dest="rerun_incomplete", action="store_true", default=True)
-        sp.add_argument("--no-rerun-incomplete", dest="rerun_incomplete", action="store_false")
+        sp.add_argument("--rerun-incomplete", dest="rerun_incomplete", action="store_true", default=True, help="Rerun incomplete jobs (default: on).")
+        sp.add_argument("--no-rerun-incomplete", dest="rerun_incomplete", action="store_false",  help="Disable rerun of incomplete jobs.")
         sp.add_argument("--rerun-triggers", default="mtime")
         # IMPORTANT: --extra captures the rest; user should pass it LAST.
         sp.add_argument("--extra", nargs=argparse.REMAINDER)
@@ -168,6 +168,9 @@ def main() -> int:
 
     # One consolidated --config
     config_overrides: list[str] = []
+    
+    if args.rerun_incomplete:
+        smk.append("--rerun-incomplete")
 
     if getattr(args, "trimmed", False):
         config_overrides.append("trim_enabled=true")
@@ -187,8 +190,7 @@ def main() -> int:
 
     if args.dry_run:
         smk.append("-n")
-    if args.rerun_incomplete:
-        smk.append("--rerun-incomplete")
+
     if args.rerun_triggers:
         smk.extend(["--rerun-triggers", args.rerun_triggers])
 

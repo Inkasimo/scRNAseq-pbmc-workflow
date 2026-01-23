@@ -1,4 +1,6 @@
 import glob
+import os
+from pathlib import Path
 from snakemake.io import directory
 from snakemake.shell import shell
 
@@ -14,6 +16,20 @@ TRIM_R2_ADAPTER = str(config.get("trim", {}).get("adapter_r2", "AGATCGGAAGAG"))
 TRIM_R2_QUAL = int(config.get("trim", {}).get("q_r2", 20))
 TRIM_R2_MINLEN = int(config.get("trim", {}).get("minlen_r2", 20))
 
+
+def touch_done_atomic(done_path: str):
+    """
+    Create the sentinel file atomically:
+    write to a temp file in the same directory, then os.replace().
+    """
+    done_path = str(done_path)
+    d = os.path.dirname(done_path) or "."
+    Path(d).mkdir(parents=True, exist_ok=True)
+
+    tmp = done_path + ".tmp"
+    with open(tmp, "w") as f:
+        f.write("ok\n")
+    os.replace(tmp, done_path)
 
 def as_bool(x, default=False):
     if x is None:
@@ -67,7 +83,7 @@ def is_trimmed():
 
 def starsolo_done(donor, mode):
     return f"results/alignment/starsolo/{mode}/{donor}/starsolo.done"
-	
+    
 def lane_fastqs_from_dir(fqdir, read):
     pattern = f"{fqdir}/*_{read}_*.fastq.gz"
     files = sorted(glob.glob(pattern))
@@ -139,7 +155,10 @@ if DOWNLOAD_FASTQS:
 
             tar -xf {output.tar} -C data/raw/{wildcards.donor} >> {log} 2>&1
 
-            touch {output.done}
+            tmp="{output.done}.tmp"
+            echo ok > "$tmp"
+            mv -f "$tmp" "{output.done}"
+
             echo "[END] $(date)" >> {log}
             """
 else:
@@ -155,7 +174,9 @@ else:
             ls "{params.fqdir}"/*_R1_*.fastq.gz >/dev/null
             ls "{params.fqdir}"/*_R2_*.fastq.gz >/dev/null
             mkdir -p "$(dirname "{output.done}")"
-            touch "{output.done}"
+            tmp="{output.done}.tmp"
+            echo ok > "$tmp"
+            mv -f "$tmp" "{output.done}"
             """
 
 
@@ -165,7 +186,7 @@ rule fastqc_raw:
     input:
         "data/raw/{donor}/fastqs.done"
     output:
-        "results/qc/fastqc/raw/{donor}/fastqc.done"
+        done="results/qc/fastqc/raw/{donor}/fastqc.done"
     log:
         "results/logs/qc/fastqc_raw_{donor}.log"
     threads: FASTQC_THREADS
@@ -183,15 +204,19 @@ rule fastqc_raw:
           | xargs -0 -r -n 1 -P {threads} fastqc \
               -o results/qc/fastqc/raw/{wildcards.donor} >> {log} 2>&1
 
-        touch {output}
+        tmp="{output.done}.tmp"
+        echo ok > "$tmp"
+        mv -f "$tmp" "{output.done}"
+
         echo "[END] $(date)" >> {log}
         """
+
 
 rule fastqc_trimmed:
     input:
         "data/trimmed/{donor}/trim.done"
     output:
-        "results/qc/fastqc/trimmed/{donor}/fastqc.done"
+        done="results/qc/fastqc/trimmed/{donor}/fastqc.done"
     threads: FASTQC_THREADS
     params:
         fqdir=lambda wc: f"{config.get('trim', {}).get('out_dir', 'data/trimmed')}/{wc.donor}"
@@ -204,9 +229,14 @@ rule fastqc_trimmed:
         echo "[START] $(date)" > {log}
         find "{params.fqdir}" -type f -name "*.fastq.gz" -print0 \
           | xargs -0 -r -n 1 -P {threads} fastqc -o results/qc/fastqc/trimmed/{wildcards.donor} >> {log} 2>&1
-        touch {output}
+
+        tmp="{output.done}.tmp"
+        echo ok > "$tmp"
+        mv -f "$tmp" "{output.done}"
+
         echo "[END] $(date)" >> {log}
         """
+
 
 
 
@@ -228,7 +258,7 @@ rule multiqc_raw:
             -o results/qc/multiqc/raw >> {log} 2>&1
         echo "[END] $(date)" >> {log}
         """
-		
+        
 rule multiqc_trimmed:
     input:
         expand("results/qc/fastqc/trimmed/{donor}/fastqc.done", donor=DONORS)
@@ -264,7 +294,7 @@ rule trim_fastqs:
         import os
         from pathlib import Path
 
-        log_path = str(log[0])
+        log_path = str(log[0]) if isinstance(log, (list, tuple)) else str(log)
 
         r1_files = sorted(glob.glob(f"{params.fqdir}/*_R1_*.fastq.gz"))
         r2_files = sorted(glob.glob(f"{params.fqdir}/*_R2_*.fastq.gz"))
@@ -306,7 +336,7 @@ rule trim_fastqs:
 
             shell(" ".join(cmd) + f" >> {log_path} 2>&1")
 
-        shell(f"touch {output.done}")
+        touch_done_atomic(output.done)
 
 
 
@@ -384,7 +414,9 @@ if BUILD_STAR_INDEX:
               --sjdbOverhang {params.sjdbOverhang} \
               > {log} 2>&1
 
-            touch {output.done}
+            tmp="{output.done}.tmp"
+            echo ok > "$tmp"
+            mv -f "$tmp" "{output.done}"
             """
 else:
     rule star_index_present:
@@ -403,7 +435,10 @@ else:
             test -d "{output.idx}"
             ls -A "{output.idx}" >/dev/null
 
-            touch "{output.done}"
+            tmp="{output.done}.tmp"
+            echo ok > "$tmp"
+            mv -f "$tmp" "{output.done}"
+
             echo "[END] $(date)" >> {log}
             """
 
@@ -419,9 +454,11 @@ rule whitelist_present:
 
         test -s "{input.wl}"
 
-        touch "{output.done}"
+        tmp="{output.done}.tmp"
+        echo ok > "$tmp"
+        mv -f "$tmp" "{output.done}"
         """
-		
+        
 
 # ---- Alignment / counting ----
 
@@ -468,7 +505,10 @@ rule starsolo_raw:
           --outSAMtype None \
           > {log} 2>&1
 
-        touch {output.done}
+        tmp="{output.done}.tmp"
+        echo ok > "$tmp"
+        mv -f "$tmp" "{output.done}"
+
         """
 
 
@@ -517,5 +557,7 @@ rule starsolo_trimmed:
           --outSAMtype None \
           > {log} 2>&1
 
-        touch {output.done}
+        tmp="{output.done}.tmp"
+        echo ok > "$tmp"
+        mv -f "$tmp" "{output.done}"
         """
