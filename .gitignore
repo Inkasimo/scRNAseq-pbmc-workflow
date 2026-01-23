@@ -13,3 +13,5 @@ __pycache__/
 java/
 .java/
 config/config.yaml
+**/.java/
+?/.java/

@@ -328,8 +328,8 @@ rule trim_fastqs:
                 r2_out = str(Path(params.outdir) / r2_base)
 
                 # Write to temp files first
-                r1_tmp = r1_out + ".tmp"
-                r2_tmp = r2_out + ".tmp"
+                r1_tmp = r1_out + ".tmp.gz"
+                r2_tmp = r2_out + ".tmp.gz"
                 tmp_outputs.extend([r1_tmp, r2_tmp])
 
                 # Ensure no stale tmp from a previous crash
@@ -341,16 +341,17 @@ rule trim_fastqs:
 
                 cmd = [
                     "cutadapt",
-                    "-A", params.adapter_r2,              # adapter trim on R2 only
-                    "-q", "0",                            # no quality trimming on R1 (and sets global to none)
-                    "-Q", f"0,{params.q_r2}",              # quality trim on R2 only (3' Q cutoff)
-                    "--minimum-length", f"0:{params.minlen_r2}",  # min length on R2 only
+                    "-A", params.adapter_r2,
+                    "-q", "0",
+                    "-Q", f"0,{params.q_r2}",
+                    "--minimum-length", f"0:{params.minlen_r2}",
                     "--pair-filter=any",
                     "-j", str(threads),
                     "-o", r1_tmp,
                     "-p", r2_tmp,
                     r1_in, r2_in,
                 ]
+
 
 
                 shell(" ".join(cmd) + f" >> {log_path} 2>&1")
