@@ -191,7 +191,17 @@ def main() -> int:
     if not args.section:
         p.error("You must choose a section to run.")
 
-    repo_root = Path.cwd()
+    try:
+        repo_root = Path.cwd()
+    except FileNotFoundError:
+        print(
+            "ERROR: Current working directory no longer exists.\n"
+            "You likely moved/renamed/deleted the folder you were in.\n"
+            "cd into the repo root and re-run.",
+            file=sys.stderr,
+        )
+        return 2
+
     if not (repo_root / args.snakefile).exists():
         print(f"ERROR: Snakefile not found at {args.snakefile} (run from repo root).", file=sys.stderr)
         return 2
