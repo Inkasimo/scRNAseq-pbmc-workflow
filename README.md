@@ -187,3 +187,7 @@ run_analysis.py      # Optional Python wrapper for section-based execution
   (automatically set by the wrapper for relevant sections)
 - STAR index requires ~25–30 GB RAM
 
+## Citation
+
+If you use this workflow in a publication, please cite the repository.
+A Zenodo DOI for a stable release will be provided upon publication.

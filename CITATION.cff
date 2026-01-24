@@ -1,0 +1,12 @@
+cff-version: 1.0.0
+title: "scRNAseq PBMC Snakemake Workflow"
+message: "If you use this workflow in your research, please cite it."
+type: software
+authors:
+  - family-names: Inkala
+    given-names: Simo Iisakki
+repository-code: https://github.com/inkasimo/scRNAseq-pbmc-workflow
+license: MIT
+
+doi: 10.5281/zenodo.XXXXXXX
+version: v1.0.0
