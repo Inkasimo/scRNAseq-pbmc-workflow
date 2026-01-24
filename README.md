@@ -87,32 +87,32 @@ If you do not use the wrapper, you can ignore this step entirely.
 ### Inspect available sections:
 
 ```bash
-python run_analysis.py --list-sections
+python3 run_analysis.py --list-sections
 ```
 
 ### Inspect donors:
 
 ```bash
-python run_analysis.py --list-donors
+python3 run_analysis.py --list-donors
 ```
 ### Example runs
 
 #### Download data:
 
 ```bash
-python run_analysis.py download_data --cpus 8 --cores 8
+python3 run_analysis.py download_data --cpus 8 --cores 8
 ```
 
 #### QC only:
 
 ```bash
-python run_analysis.py qc --cpus 8 --cores 8
+python3 run_analysis.py qc --cpus 8 --cores 8
 ```
 
 #### Align all donors:
 
 ```bash
-python run_analysis.py align \
+python3 run_analysis.py align \
   --donor all \
   --cpus 8 --cores 8 \
   -j 1 \
@@ -123,7 +123,7 @@ python run_analysis.py align \
 #### Dry run (no execution):
 
 ```bash
-python run_analysis.py all --dry-run
+python3 run_analysis.py all --dry-run
 ```
 
 ### Option B: Direct Snakemake (no wrapper)

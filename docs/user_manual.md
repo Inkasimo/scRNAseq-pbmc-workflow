@@ -201,19 +201,19 @@ If you choose not to use the wrapper, this step can be skipped.
 Run a dry run to inspect what would be executed:
 
 ```bash 
-python run_analysis.py all --dry-run
+python3 run_analysis.py all --dry-run
 ```
 
 Inspect the available sections: 
 
 ```bash 
-python run_analysis.py --list-sections
+python3 run_analysis.py --list-sections
 ```
 
 Run the full upstream workflow:
 
 ```bash 
-python run_analysis.py upstream --cpus 8 --cores 8
+python3 run_analysis.py upstream --cpus 8 --cores 8
 ```
 
 This will:
@@ -329,7 +329,7 @@ dependencies.
 To see which pipeline sections can be executed:
 
 ```bash
-python run_analysis.py --list-sections
+python3 run_analysis.py --list-sections
 ````
 
 Typical sections include:
@@ -357,7 +357,7 @@ Donors are defined in config/config.yaml.
 To list them:
 
 ``` bash
-python run_analysis.py --list-donors
+python3 run_analysis.py --list-donors
 ```
 
 ### Running Individual Sections
@@ -365,7 +365,7 @@ python run_analysis.py --list-donors
 #### Download data
 
 ``` bash
-python run_analysis.py download_data --cpus 8 --cores 8
+python3 run_analysis.py download_data --cpus 8 --cores 8
 ```
 
 Downloads FASTQ files (unless disabled) and marks completion with .done files.
@@ -373,7 +373,7 @@ Downloads FASTQ files (unless disabled) and marks completion with .done files.
 #### Quality control only
 
 ``` bash
-python run_analysis.py qc --cpus 8 --cores 8
+python3 run_analysis.py qc --cpus 8 --cores 8
 ```
 
 Runs FastQC and MultiQC on raw FASTQs.
@@ -381,7 +381,7 @@ Runs FastQC and MultiQC on raw FASTQs.
 #### Reference preparation
 
 ``` bash
-python run_analysis.py ref --cpus 8 --cores 8
+python3 run_analysis.py ref --cpus 8 --cores 8
 ```
 
 Prepares static reference resources, including the barcode whitelist and STAR
@@ -390,7 +390,7 @@ genome index.
 #### Alignment (all donors)
 
 ``` bash
-python run_analysis.py align \
+python3 run_analysis.py align \
   --donor all \
   --cpus 8 --cores 8 \
   -j 1 \
@@ -402,7 +402,7 @@ Runs STARsolo alignment and generates gene–cell count matrices.
 #### Alignment (selected donors)
 
 ``` bash
-python run_analysis.py align \
+python3 run_analysis.py align \
   --donor donor1 \
   --donor donor3 \
   --cpus 8 --cores 8 \
@@ -417,13 +417,13 @@ Read trimming is disabled by default.
 To enable trimming for all applicable downstream steps:
 
 ``` bash
-python run_analysis.py trim --cpus 8 --cores 8
+python3 run_analysis.py trim --cpus 8 --cores 8
 ```
 
 To run alignment on trimmed reads:
 
 ``` bash
-python run_analysis.py align \
+python3 run_analysis.py align \
   --donor all \
   --trimmed \
   --cpus 8 --cores 8
@@ -437,13 +437,13 @@ untrimmed results.
 Runs the full upstream workflow for all donors defined in `config/config.yaml`.
 
 ```bash
-python run_analysis.py upstream --cpus 8 --cores 8
+python3 run_analysis.py upstream --cpus 8 --cores 8
 ```
 
 To run upstream in trimmed mode: 
 
 ```bash
-python run_analysis.py upstream --trimmed --cpus 8 --cores 8
+python3 run_analysis.py upstream --trimmed --cpus 8 --cores 8
 ```
  
 #### Running upstream without downloading FASTQs
@@ -451,13 +451,13 @@ python run_analysis.py upstream --trimmed --cpus 8 --cores 8
 Runs the upstream workflow assuming FASTQs already exist locally (no downloads).
 
 ```bash
-python run_analysis.py upstream_no_download --cpus 8 --cores 8
+python3 run_analysis.py upstream_no_download --cpus 8 --cores 8
 ```
 
 Trimmed mode is also supported:
 
 ```bash
-python run_analysis.py upstream_no_download --trimmed --cpus 8 --cores 8
+python3 run_analysis.py upstream_no_download --trimmed --cpus 8 --cores 8
 ```
  
 
@@ -466,13 +466,13 @@ python run_analysis.py upstream_no_download --trimmed --cpus 8 --cores 8
 To run the full workflow using the wrapper:
 
 ``` bash
-python run_analysis.py all --cpus 8 --cores 8
+python3 run_analysis.py all --cpus 8 --cores 8
 ```
 
 A dry run can be performed without executing any steps:
 
 ``` bash
-python run_analysis.py all --dry-run
+python3 run_analysis.py all --dry-run
 ```
 
 ### CPUs vs cores (Docker vs Snakemake)
@@ -502,7 +502,7 @@ For STARsolo-heavy workloads, it is common to use:
 If the resources allow you can run alignment in parallel: 
 
 ```bash
-python run_analysis.py align \
+python3 run_analysis.py align \
   --donor all \
   --cpus 16 \
   --cores 16 \
@@ -629,7 +629,7 @@ and limited manner to preserve the structure required for scRNA-seq alignment.
 Trimming can be enabled explicitly via the Python wrapper:
 
 ```bash
-python run_analysis.py trim --cpus 8 --cores 8
+python3 run_analysis.py trim --cpus 8 --cores 8
 ```
 
 Once trimming is enabled, all downstream steps that depend on FASTQ inputs
@@ -671,7 +671,7 @@ leave a stale lock file that prevents subsequent runs.
 To remove the lock:
 
 ```bash 
-python run_analysis.py unlock
+python3 run_analysis.py unlock
 ```
 
 Alternatively, the lock can be cleared directly via Snakemake inside Docker.
