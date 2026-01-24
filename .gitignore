@@ -10,3 +10,10 @@ __pycache__/
 .Rproj.user/
 .vscode/
 .DS_Store
+java/
+.java/
+config/config.yaml
+**/.java/
+?/.java/
+scripts/clean_ref_only.sh
+scripts/clean_outputs.sh

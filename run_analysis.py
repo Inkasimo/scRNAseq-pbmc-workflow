@@ -26,7 +26,7 @@ SECTION_TARGETS = {
     ],
     "align": [],
     "all": [],
-    "all_no_download":[],
+    "all_no_download": [],
     "trim": [
         "data/trimmed/{donor}/trim.done",
     ],
@@ -34,7 +34,49 @@ SECTION_TARGETS = {
         "data/trimmed/{donor}/trim.done",
         "results/qc/fastqc/trimmed/{donor}/fastqc.done",
         "results/qc/multiqc/trimmed/multiqc_report.html",
+        "results/qc/fastqc/raw/{donor}/fastqc.done",
+        "results/qc/multiqc/raw/multiqc_report.html",
     ],
+
+    # Internal target sets for upstream (do not expose as CLI sections)
+    "upstream_raw": [
+        "data/raw/{donor}/fastqs.done",
+        "results/qc/fastqc/raw/{donor}/fastqc.done",
+        "results/qc/multiqc/raw/multiqc_report.html",
+        "data/ref/whitelist.done",
+        "data/ref/star_index.done",
+        "results/alignment/starsolo/raw/{donor}/starsolo.done",
+    ],
+    "upstream_trimmed": [
+        "data/raw/{donor}/fastqs.done",
+        "results/qc/fastqc/raw/{donor}/fastqc.done",
+        "results/qc/multiqc/raw/multiqc_report.html",
+        "data/trimmed/{donor}/trim.done",
+        "results/qc/fastqc/trimmed/{donor}/fastqc.done",
+        "results/qc/multiqc/trimmed/multiqc_report.html",
+        "data/ref/whitelist.done",
+        "data/ref/star_index.done",
+        "results/alignment/starsolo/trimmed/{donor}/starsolo.done",
+    ],
+    "upstream_no_download_raw": [
+        "results/qc/fastqc/raw/{donor}/fastqc.done",
+        "results/qc/multiqc/raw/multiqc_report.html",
+        "data/ref/whitelist.done",
+        "data/ref/star_index.done",
+        "results/alignment/starsolo/raw/{donor}/starsolo.done",
+    ],
+    "upstream_no_download_trimmed": [
+        "results/qc/fastqc/raw/{donor}/fastqc.done",
+        "results/qc/multiqc/raw/multiqc_report.html",
+        "data/trimmed/{donor}/trim.done",
+        "results/qc/fastqc/trimmed/{donor}/fastqc.done",
+        "results/qc/multiqc/trimmed/multiqc_report.html",
+        "data/ref/whitelist.done",
+        "data/ref/star_index.done",
+        "results/alignment/starsolo/trimmed/{donor}/starsolo.done",
+    ],
+
+    "unlock": [],
 }
 
 def load_donors(configfile: str) -> list[str]:
@@ -69,8 +111,10 @@ def main() -> int:
         sp.add_argument("-j", "--jobs", type=int, default=1)
         sp.add_argument("--set-threads", action="append", default=[])
         sp.add_argument("--dry-run", action="store_true")
-        sp.add_argument("--rerun-incomplete", dest="rerun_incomplete", action="store_true", default=True)
-        sp.add_argument("--no-rerun-incomplete", dest="rerun_incomplete", action="store_false")
+        sp.add_argument("--rerun-incomplete", dest="rerun_incomplete", action="store_true", default=True,
+                        help="Rerun incomplete jobs (default: on).")
+        sp.add_argument("--no-rerun-incomplete", dest="rerun_incomplete", action="store_false",
+                        help="Disable rerun of incomplete jobs.")
         sp.add_argument("--rerun-triggers", default="mtime")
         # IMPORTANT: --extra captures the rest; user should pass it LAST.
         sp.add_argument("--extra", nargs=argparse.REMAINDER)
@@ -101,17 +145,41 @@ def main() -> int:
     sp_all = sub.add_parser("all")
     sp_all.add_argument("--trimmed", action="store_true")
     add_common(sp_all)
-    
+
     sp_all_no_download = sub.add_parser("all_no_download")
     sp_all_no_download.add_argument("--trimmed", action="store_true")
     add_common(sp_all_no_download)
 
+    # CLI sections: upstream + upstream_no_download (internal target sets are selected later)
+    sp_upstream = sub.add_parser("upstream")
+    sp_upstream.add_argument("--trimmed", action="store_true")
+    add_common(sp_upstream)
+
+    sp_upstream_no_dl = sub.add_parser("upstream_no_download")
+    sp_upstream_no_dl.add_argument("--trimmed", action="store_true")
+    add_common(sp_upstream_no_dl)
+
+    sp_unlock = sub.add_parser("unlock")
+    add_common(sp_unlock)
 
     args = p.parse_args()
 
     if args.list_sections:
         print("Available sections:")
-        for s in SECTION_TARGETS.keys():
+        for s in [
+            "download_data",
+            "download_data_and_qc",
+            "qc",
+            "ref",
+            "trim",
+            "trim_and_qc",
+            "align",
+            "upstream",
+            "upstream_no_download",
+            "all",
+            "all_no_download",
+            "unlock",
+        ]:
             print(f"  - {s}")
         return 0
 
@@ -119,8 +187,6 @@ def main() -> int:
         for d in load_donors("config/config.yaml"):
             print(d)
         return 0
-        
-
 
     if not args.section:
         p.error("You must choose a section to run.")
@@ -134,22 +200,38 @@ def main() -> int:
 
     # Resolve targets
     targets: list[str] = []
+
     if args.section in ("download_data", "download_data_and_qc", "qc", "trim", "trim_and_qc"):
         for t in SECTION_TARGETS[args.section]:
             if "{donor}" in t:
-                targets.extend([t.format(donor=d) for d in donors])
+                targets.extend(t.format(donor=d) for d in donors)
             else:
                 targets.append(t)
+
     elif args.section == "ref":
         targets = SECTION_TARGETS["ref"]
+
     elif args.section == "align":
         if not args.donor:
             print("ERROR: align requires --donor (or --donor all).", file=sys.stderr)
             return 2
-        donors_for_align = load_donors(args.configfile) if args.donor == ["all"] else args.donor
+        donors_for_align = donors if args.donor == ["all"] else args.donor
         mode_dir = "trimmed" if getattr(args, "trimmed", False) else "raw"
         targets = [f"results/alignment/starsolo/{mode_dir}/{d}/starsolo.done" for d in donors_for_align]
-    elif args.section == "all":
+
+    elif args.section in ("upstream", "upstream_no_download"):
+        if args.section == "upstream":
+            key = "upstream_trimmed" if getattr(args, "trimmed", False) else "upstream_raw"
+        else:
+            key = "upstream_no_download_trimmed" if getattr(args, "trimmed", False) else "upstream_no_download_raw"
+
+        for t in SECTION_TARGETS[key]:
+            if "{donor}" in t:
+                targets.extend(t.format(donor=d) for d in donors)
+            else:
+                targets.append(t)
+
+    elif args.section in ("all", "all_no_download", "unlock"):
         targets = []
 
     # Build snakemake command
@@ -166,17 +248,23 @@ def main() -> int:
     # One consolidated --config
     config_overrides: list[str] = []
 
+    if args.rerun_incomplete:
+        smk.append("--rerun-incomplete")
+
     if getattr(args, "trimmed", False):
         config_overrides.append("trim_enabled=true")
 
     if args.section in ("trim", "trim_and_qc"):
         config_overrides.append("trim_enabled=true")
 
-    if args.section in ("download_data", "download_data_and_qc", "all"):
-        config_overrides.append("io={download_fastqs:true}")
+    if args.section in ("download_data", "download_data_and_qc", "all", "upstream"):
+        config_overrides.append("download_fastqs=true")
 
-    if args.section in ("ref", "all"):
-        config_overrides.append("ref={build_star_index:true}")
+    if args.section in ("ref", "all", "upstream", "upstream_no_download"):
+        config_overrides.append("build_star_index=true")
+
+    if args.section in ("all_no_download", "upstream_no_download"):
+        config_overrides.append("download_fastqs=false")
 
     if config_overrides:
         smk.append("--config")
@@ -184,8 +272,7 @@ def main() -> int:
 
     if args.dry_run:
         smk.append("-n")
-    if args.rerun_incomplete:
-        smk.append("--rerun-incomplete")
+
     if args.rerun_triggers:
         smk.extend(["--rerun-triggers", args.rerun_triggers])
 
@@ -217,6 +304,16 @@ def main() -> int:
         args.image,
     ]
 
+    if args.section == "unlock":
+        smk = [
+            "snakemake",
+            "-s", args.snakefile,
+            "--configfile", args.configfile,
+            "--unlock",
+        ]
+        return run(docker + smk)
+
+    # NORMAL PATH: run whatever smk you already built above
     return run(docker + smk)
 
 if __name__ == "__main__":

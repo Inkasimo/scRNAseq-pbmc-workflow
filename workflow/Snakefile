@@ -1,6 +1,11 @@
 import glob
+import os
+from pathlib import Path
 from snakemake.io import directory
 from snakemake.shell import shell
+
+
+# CONFIG
 
 configfile: "config/config.yaml"
 
@@ -9,31 +14,64 @@ configfile: "config/config.yaml"
 DONORS = list(config["pbmc"].keys())
 FASTQC_THREADS = int(config.get("resources", {}).get("fastqc_threads", 2))
 STAR_THREADS = int(config.get("resources", {}).get("star_threads", 8))
-DOWNLOAD_FASTQS = bool(config.get("io", {}).get("download_fastqs", False))
-BUILD_STAR_INDEX = bool(config.get("ref", {}).get("build_star_index", True))
 CUTADAPT_THREADS = int(config.get("resources", {}).get("cutadapt_threads", 4))
 TRIM_R2_ADAPTER = str(config.get("trim", {}).get("adapter_r2", "AGATCGGAAGAG"))
 TRIM_R2_QUAL = int(config.get("trim", {}).get("q_r2", 20))
 TRIM_R2_MINLEN = int(config.get("trim", {}).get("minlen_r2", 20))
 
 
+# Helpers
+
+def touch_done_atomic(done_path: str):
+    """
+    Create the sentinel file atomically:
+    write to a temp file in the same directory, then os.replace().
+    """
+    done_path = str(done_path)
+    d = os.path.dirname(done_path) or "."
+    Path(d).mkdir(parents=True, exist_ok=True)
+
+    tmp = done_path + ".tmp"
+    with open(tmp, "w") as f:
+        f.write("ok\n")
+    os.replace(tmp, done_path)
+
+def as_bool(x, default=False):
+    if x is None:
+        return default
+    if isinstance(x, bool):
+        return x
+    if isinstance(x, (int, float)):
+        return bool(x)
+    if isinstance(x, str):
+        return x.strip().lower() in ("1", "true", "t", "yes", "y", "on")
+    return bool(x)
+
+DOWNLOAD_FASTQS = as_bool(config.get("download_fastqs", None),
+                         default=as_bool(config.get("io", {}).get("download_fastqs", False)))
+
+BUILD_STAR_INDEX = as_bool(config.get("build_star_index", None),
+                           default=as_bool(config.get("ref", {}).get("build_star_index", True)))
+
+
 def mode():
     return "trimmed" if trim_enabled() else "raw"
 
-def fastq_dir(donor):
-    return f"data/trimmed/{donor}" if trim_enabled() else config["pbmc"][donor]["fastq_dir"]
+#dont use
+#def fastq_dir(donor):
+    #return f"data/trimmed/{donor}" if trim_enabled() else config["pbmc"][donor]["fastq_dir"]
 
 def starsolo_root():
     return f"results/alignment/starsolo/{mode()}"
 
-
-def lane_fastqs(donor, read):
-    fqdir = fastq_dir(donor)
-    pattern = f"{fqdir}/*_{read}_*.fastq.gz"
-    files = sorted(glob.glob(pattern))
-    if not files:
-        raise ValueError(f"No {read} FASTQs found for {donor} with pattern: {pattern}")
-    return files
+#Dont use
+#def lane_fastqs(donor, read):
+    #fqdir = fastq_dir(donor)
+    #pattern = f"{fqdir}/*_{read}_*.fastq.gz"
+    #files = sorted(glob.glob(pattern))
+    #if not files:
+        #raise ValueError(f"No {read} FASTQs found for {donor} with pattern: {pattern}")
+    #return files
 
 def trim_enabled():
     # CLI override takes precedence
@@ -51,16 +89,16 @@ def is_trimmed():
 
 def starsolo_done(donor, mode):
     return f"results/alignment/starsolo/{mode}/{donor}/starsolo.done"
-	
-def lane_fastqs_from_dir(fqdir, read):
-    pattern = f"{fqdir}/*_{read}_*.fastq.gz"
-    files = sorted(glob.glob(pattern))
-    if not files:
-        raise ValueError(f"No {read} FASTQs found with pattern: {pattern}")
-    return files
+#Dont use  
+#def lane_fastqs_from_dir(fqdir, read):
+    #pattern = f"{fqdir}/*_{read}_*.fastq.gz"
+    #files = sorted(glob.glob(pattern))
+    #if not files:
+        #raise ValueError(f"No {read} FASTQs found with pattern: {pattern}")
+    #return files
 
 
-
+# ALL RULE
 
 rule all:
     input:
@@ -92,7 +130,9 @@ rule all:
 
 
 
-
+#
+# --- UPSTREAM RULES ---
+#
 
 # ---- FASTQ acquisition: optional download vs presence check ----
 
@@ -123,7 +163,10 @@ if DOWNLOAD_FASTQS:
 
             tar -xf {output.tar} -C data/raw/{wildcards.donor} >> {log} 2>&1
 
-            touch {output.done}
+            tmp="{output.done}.tmp"
+            echo ok > "$tmp"
+            mv -f "$tmp" "{output.done}"
+
             echo "[END] $(date)" >> {log}
             """
 else:
@@ -139,7 +182,9 @@ else:
             ls "{params.fqdir}"/*_R1_*.fastq.gz >/dev/null
             ls "{params.fqdir}"/*_R2_*.fastq.gz >/dev/null
             mkdir -p "$(dirname "{output.done}")"
-            touch "{output.done}"
+            tmp="{output.done}.tmp"
+            echo ok > "$tmp"
+            mv -f "$tmp" "{output.done}"
             """
 
 
@@ -149,7 +194,7 @@ rule fastqc_raw:
     input:
         "data/raw/{donor}/fastqs.done"
     output:
-        "results/qc/fastqc/raw/{donor}/fastqc.done"
+        done="results/qc/fastqc/raw/{donor}/fastqc.done"
     log:
         "results/logs/qc/fastqc_raw_{donor}.log"
     threads: FASTQC_THREADS
@@ -167,15 +212,19 @@ rule fastqc_raw:
           | xargs -0 -r -n 1 -P {threads} fastqc \
               -o results/qc/fastqc/raw/{wildcards.donor} >> {log} 2>&1
 
-        touch {output}
+        tmp="{output.done}.tmp"
+        echo ok > "$tmp"
+        mv -f "$tmp" "{output.done}"
+
         echo "[END] $(date)" >> {log}
         """
+
 
 rule fastqc_trimmed:
     input:
         "data/trimmed/{donor}/trim.done"
     output:
-        "results/qc/fastqc/trimmed/{donor}/fastqc.done"
+        done="results/qc/fastqc/trimmed/{donor}/fastqc.done"
     threads: FASTQC_THREADS
     params:
         fqdir=lambda wc: f"{config.get('trim', {}).get('out_dir', 'data/trimmed')}/{wc.donor}"
@@ -188,9 +237,14 @@ rule fastqc_trimmed:
         echo "[START] $(date)" > {log}
         find "{params.fqdir}" -type f -name "*.fastq.gz" -print0 \
           | xargs -0 -r -n 1 -P {threads} fastqc -o results/qc/fastqc/trimmed/{wildcards.donor} >> {log} 2>&1
-        touch {output}
+
+        tmp="{output.done}.tmp"
+        echo ok > "$tmp"
+        mv -f "$tmp" "{output.done}"
+
         echo "[END] $(date)" >> {log}
         """
+
 
 
 
@@ -212,7 +266,7 @@ rule multiqc_raw:
             -o results/qc/multiqc/raw >> {log} 2>&1
         echo "[END] $(date)" >> {log}
         """
-		
+        
 rule multiqc_trimmed:
     input:
         expand("results/qc/fastqc/trimmed/{donor}/fastqc.done", donor=DONORS)
@@ -231,79 +285,100 @@ rule multiqc_trimmed:
 
 
 rule trim_fastqs:
-    """
-    Trim only Read2 (cDNA) while keeping Read1 (CB+UMI) intact.
-    Outputs are written to data/trimmed/{donor}/ with the same basenames.
-    """
     input:
         raw_done="data/raw/{donor}/fastqs.done",
-        fqdir=lambda wc: config["pbmc"][wc.donor]["fastq_dir"],
     output:
         done="data/trimmed/{donor}/trim.done"
     threads: CUTADAPT_THREADS
     log:
         "results/logs/trim/cutadapt_{donor}.log"
     params:
+        fqdir=lambda wc: config["pbmc"][wc.donor]["fastq_dir"],
         outdir=lambda wc: f"data/trimmed/{wc.donor}",
         adapter_r2=TRIM_R2_ADAPTER,
         q_r2=TRIM_R2_QUAL,
         minlen_r2=TRIM_R2_MINLEN,
+
     run:
         import os
         from pathlib import Path
 
-        # Discover lane FASTQs at runtime (after raw_done is satisfied)
-        r1_files = sorted(glob.glob(f"{input.fqdir}/*_R1_*.fastq.gz"))
-        r2_files = sorted(glob.glob(f"{input.fqdir}/*_R2_*.fastq.gz"))
+        log_path = str(log[0]) if isinstance(log, (list, tuple)) else str(log)
+
+        r1_files = sorted(glob.glob(f"{params.fqdir}/*_R1_*.fastq.gz"))
+        r2_files = sorted(glob.glob(f"{params.fqdir}/*_R2_*.fastq.gz"))
 
         if not r1_files:
-            raise ValueError(f"{wildcards.donor}: no R1 files found in {input.fqdir} with pattern '*_R1_*.fastq.gz'")
+            raise ValueError(f"{wildcards.donor}: no R1 files found in {params.fqdir}")
         if not r2_files:
-            raise ValueError(f"{wildcards.donor}: no R2 files found in {input.fqdir} with pattern '*_R2_*.fastq.gz'")
-
-        # Basic sanity: same number of R1 and R2 lane files
+            raise ValueError(f"{wildcards.donor}: no R2 files found in {params.fqdir}")
         if len(r1_files) != len(r2_files):
             raise ValueError(
-                f"{wildcards.donor}: mismatch R1({len(r1_files)}) vs R2({len(r2_files)}) files in {input.fqdir}"
+                f"{wildcards.donor}: mismatch R1({len(r1_files)}) vs R2({len(r2_files)}) in {params.fqdir}"
             )
 
         Path(params.outdir).mkdir(parents=True, exist_ok=True)
-        Path(os.path.dirname(log)).mkdir(parents=True, exist_ok=True)
+        Path(os.path.dirname(log_path)).mkdir(parents=True, exist_ok=True)
 
-        with open(log, "w") as lf:
+        with open(log_path, "w") as lf:
             lf.write(f"[START] donor={wildcards.donor}\n")
-            lf.write(f"fqdir={input.fqdir}\n")
-            lf.write(f"adapter_r2={params.adapter_r2} q_r2={params.q_r2} minlen_r2={params.minlen_r2}\n")
+            lf.write(f"fqdir={params.fqdir}\n")
 
-        # Trim each lane pair, preserving basenames
-        for r1_in, r2_in in zip(r1_files, r2_files):
-            r1_base = os.path.basename(r1_in)
-            r2_base = os.path.basename(r2_in)
+        # Track temp outputs so we can clean them if anything fails
+        tmp_outputs = []
 
-            r1_out = str(Path(params.outdir) / r1_base)
-            r2_out = str(Path(params.outdir) / r2_base)
+        try:
+            for r1_in, r2_in in zip(r1_files, r2_files):
+                r1_base = os.path.basename(r1_in)
+                r2_base = os.path.basename(r2_in)
 
-            cmd = [
-                "cutadapt",
-                "-A", params.adapter_r2,                   # adapter on R2 only
-                "-q", f"0,{params.q_r2}",                  # no Q-trim on R1, Q-trim on R2
-                "--minimum-length", f"0:{params.minlen_r2}",  # no minlen on R1, minlen on R2
-                "--pair-filter=any",                       # drop pair if R2 fails
-                "-j", str(threads),
-                "-o", r1_out,
-                "-p", r2_out,
-                r1_in, r2_in,
-            ]
+                r1_out = str(Path(params.outdir) / r1_base)
+                r2_out = str(Path(params.outdir) / r2_base)
 
-            with open(log, "a") as lf:
-                lf.write("CMD: " + " ".join(cmd) + "\n")
+                # Write to temp files first
+                r1_tmp = r1_out + ".tmp.gz"
+                r2_tmp = r2_out + ".tmp.gz"
+                tmp_outputs.extend([r1_tmp, r2_tmp])
 
-            shell(" ".join(cmd) + f" >> {log} 2>&1")
+                # Ensure no stale tmp from a previous crash
+                for p in (r1_tmp, r2_tmp):
+                    try:
+                        os.remove(p)
+                    except FileNotFoundError:
+                        pass
 
-        shell(f"touch {output.done}")
-        with open(log, "a") as lf:
-            lf.write("[END]\n")
+                cmd = [
+                    "cutadapt",
+                    "-A", params.adapter_r2,
+                    "-q", "0",
+                    "-Q", f"0,{params.q_r2}",
+                    "--minimum-length", f"0:{params.minlen_r2}",
+                    "--pair-filter=any",
+                    "-j", str(threads),
+                    "-o", r1_tmp,
+                    "-p", r2_tmp,
+                    r1_in, r2_in,
+                ]
 
+
+
+                shell(" ".join(cmd) + f" >> {log_path} 2>&1")
+
+                # Atomic-ish publish: only now move temp -> final
+                os.replace(r1_tmp, r1_out)
+                os.replace(r2_tmp, r2_out)
+
+            # Only create sentinel after all lanes succeeded and were published
+            touch_done_atomic(output.done)
+
+        except Exception:
+            # Best-effort cleanup of temp files if something failed mid-run
+            for p in tmp_outputs:
+                try:
+                    os.remove(p)
+                except FileNotFoundError:
+                    pass
+            raise
 
 
 
@@ -379,7 +454,9 @@ if BUILD_STAR_INDEX:
               --sjdbOverhang {params.sjdbOverhang} \
               > {log} 2>&1
 
-            touch {output.done}
+            tmp="{output.done}.tmp"
+            echo ok > "$tmp"
+            mv -f "$tmp" "{output.done}"
             """
 else:
     rule star_index_present:
@@ -398,7 +475,10 @@ else:
             test -d "{output.idx}"
             ls -A "{output.idx}" >/dev/null
 
-            touch "{output.done}"
+            tmp="{output.done}.tmp"
+            echo ok > "$tmp"
+            mv -f "$tmp" "{output.done}"
+
             echo "[END] $(date)" >> {log}
             """
 
@@ -414,9 +494,11 @@ rule whitelist_present:
 
         test -s "{input.wl}"
 
-        touch "{output.done}"
+        tmp="{output.done}.tmp"
+        echo ok > "$tmp"
+        mv -f "$tmp" "{output.done}"
         """
-		
+        
 
 # ---- Alignment / counting ----
 
@@ -433,24 +515,26 @@ rule starsolo_raw:
         wl=config["ref"]["whitelist"],
         wl_done="data/ref/whitelist.done",
         fastqs_done="data/raw/{donor}/fastqs.done",
-        r1=lambda wc: lane_fastqs_from_dir(config["pbmc"][wc.donor]["fastq_dir"], "R1"),
-        r2=lambda wc: lane_fastqs_from_dir(config["pbmc"][wc.donor]["fastq_dir"], "R2"),
     output:
         done="results/alignment/starsolo/raw/{donor}/starsolo.done"
     params:
         outdir="results/alignment/starsolo/raw/{donor}",
-        r1=lambda wc, input: ",".join(input.r1),
-        r2=lambda wc, input: ",".join(input.r2)
+        fqdir=lambda wc: config["pbmc"][wc.donor]["fastq_dir"],
     shell:
         r"""
         set -euo pipefail
         mkdir -p {params.outdir}
         mkdir -p results/logs/alignment
 
+        R1="$(ls {params.fqdir}/*_R1_*.fastq.gz | paste -sd, -)"
+        R2="$(ls {params.fqdir}/*_R2_*.fastq.gz | paste -sd, -)"
+        test -n "$R1"
+        test -n "$R2"
+
         STAR \
           --runThreadN {threads} \
           --genomeDir {input.idx} \
-          --readFilesIn {params.r2} {params.r1} \
+          --readFilesIn "$R2" "$R1" \
           --readFilesCommand zcat \
           --outFileNamePrefix {params.outdir}/ \
           --soloType CB_UMI_Simple \
@@ -463,8 +547,11 @@ rule starsolo_raw:
           --outSAMtype None \
           > {log} 2>&1
 
-        touch {output.done}
+        tmp="{output.done}.tmp"
+        echo ok > "$tmp"
+        mv -f "$tmp" "{output.done}"
         """
+
 
 
 rule starsolo_trimmed:
@@ -512,5 +599,11 @@ rule starsolo_trimmed:
           --outSAMtype None \
           > {log} 2>&1
 
-        touch {output.done}
+        tmp="{output.done}.tmp"
+        echo ok > "$tmp"
+        mv -f "$tmp" "{output.done}"
         """
+
+# 
+# --- DOWNSTREAM RULES
+#

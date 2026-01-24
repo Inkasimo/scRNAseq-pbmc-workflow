@@ -21,7 +21,7 @@ trim:
   enabled: false
   adapter_r2: "AGATCGGAAGAG"
   q_r2: 20
-  minlen_r2: 20
+  minlen_r2: 60
 
 io:
   # set true ONLY if you want Snakemake to download FASTQs.
