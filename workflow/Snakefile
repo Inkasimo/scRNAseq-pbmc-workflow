@@ -57,20 +57,21 @@ BUILD_STAR_INDEX = as_bool(config.get("build_star_index", None),
 def mode():
     return "trimmed" if trim_enabled() else "raw"
 
-def fastq_dir(donor):
-    return f"data/trimmed/{donor}" if trim_enabled() else config["pbmc"][donor]["fastq_dir"]
+#dont use
+#def fastq_dir(donor):
+    #return f"data/trimmed/{donor}" if trim_enabled() else config["pbmc"][donor]["fastq_dir"]
 
 def starsolo_root():
     return f"results/alignment/starsolo/{mode()}"
 
-
-def lane_fastqs(donor, read):
-    fqdir = fastq_dir(donor)
-    pattern = f"{fqdir}/*_{read}_*.fastq.gz"
-    files = sorted(glob.glob(pattern))
-    if not files:
-        raise ValueError(f"No {read} FASTQs found for {donor} with pattern: {pattern}")
-    return files
+#Dont use
+#def lane_fastqs(donor, read):
+    #fqdir = fastq_dir(donor)
+    #pattern = f"{fqdir}/*_{read}_*.fastq.gz"
+    #files = sorted(glob.glob(pattern))
+    #if not files:
+        #raise ValueError(f"No {read} FASTQs found for {donor} with pattern: {pattern}")
+    #return files
 
 def trim_enabled():
     # CLI override takes precedence
@@ -88,13 +89,13 @@ def is_trimmed():
 
 def starsolo_done(donor, mode):
     return f"results/alignment/starsolo/{mode}/{donor}/starsolo.done"
-    
-def lane_fastqs_from_dir(fqdir, read):
-    pattern = f"{fqdir}/*_{read}_*.fastq.gz"
-    files = sorted(glob.glob(pattern))
-    if not files:
-        raise ValueError(f"No {read} FASTQs found with pattern: {pattern}")
-    return files
+#Dont use  
+#def lane_fastqs_from_dir(fqdir, read):
+    #pattern = f"{fqdir}/*_{read}_*.fastq.gz"
+    #files = sorted(glob.glob(pattern))
+    #if not files:
+        #raise ValueError(f"No {read} FASTQs found with pattern: {pattern}")
+    #return files
 
 
 # ALL RULE
@@ -514,24 +515,26 @@ rule starsolo_raw:
         wl=config["ref"]["whitelist"],
         wl_done="data/ref/whitelist.done",
         fastqs_done="data/raw/{donor}/fastqs.done",
-        r1=lambda wc: lane_fastqs_from_dir(config["pbmc"][wc.donor]["fastq_dir"], "R1"),
-        r2=lambda wc: lane_fastqs_from_dir(config["pbmc"][wc.donor]["fastq_dir"], "R2"),
     output:
         done="results/alignment/starsolo/raw/{donor}/starsolo.done"
     params:
         outdir="results/alignment/starsolo/raw/{donor}",
-        r1=lambda wc, input: ",".join(input.r1),
-        r2=lambda wc, input: ",".join(input.r2)
+        fqdir=lambda wc: config["pbmc"][wc.donor]["fastq_dir"],
     shell:
         r"""
         set -euo pipefail
         mkdir -p {params.outdir}
         mkdir -p results/logs/alignment
 
+        R1="$(ls {params.fqdir}/*_R1_*.fastq.gz | paste -sd, -)"
+        R2="$(ls {params.fqdir}/*_R2_*.fastq.gz | paste -sd, -)"
+        test -n "$R1"
+        test -n "$R2"
+
         STAR \
           --runThreadN {threads} \
           --genomeDir {input.idx} \
-          --readFilesIn {params.r2} {params.r1} \
+          --readFilesIn "$R2" "$R1" \
           --readFilesCommand zcat \
           --outFileNamePrefix {params.outdir}/ \
           --soloType CB_UMI_Simple \
@@ -547,8 +550,8 @@ rule starsolo_raw:
         tmp="{output.done}.tmp"
         echo ok > "$tmp"
         mv -f "$tmp" "{output.done}"
-
         """
+
 
 
 rule starsolo_trimmed:
