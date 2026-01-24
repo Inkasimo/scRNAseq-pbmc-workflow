@@ -4,6 +4,9 @@ from pathlib import Path
 from snakemake.io import directory
 from snakemake.shell import shell
 
+
+# CONFIG
+
 configfile: "config/config.yaml"
 
 
@@ -16,6 +19,8 @@ TRIM_R2_ADAPTER = str(config.get("trim", {}).get("adapter_r2", "AGATCGGAAGAG"))
 TRIM_R2_QUAL = int(config.get("trim", {}).get("q_r2", 20))
 TRIM_R2_MINLEN = int(config.get("trim", {}).get("minlen_r2", 20))
 
+
+# Helpers
 
 def touch_done_atomic(done_path: str):
     """
@@ -92,7 +97,7 @@ def lane_fastqs_from_dir(fqdir, read):
     return files
 
 
-
+# ALL RULE
 
 rule all:
     input:
@@ -124,7 +129,9 @@ rule all:
 
 
 
-
+#
+# --- UPSTREAM RULES ---
+#
 
 # ---- FASTQ acquisition: optional download vs presence check ----
 
@@ -593,3 +600,7 @@ rule starsolo_trimmed:
         echo ok > "$tmp"
         mv -f "$tmp" "{output.done}"
         """
+
+# 
+# --- DOWNSTREAM RULES
+#
