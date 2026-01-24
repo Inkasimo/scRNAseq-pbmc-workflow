@@ -523,8 +523,9 @@ Direct Snakemake execution is most useful for:
 - Running specific targets
 - Advanced or ad hoc usage
 
-``` bash
 Dry Run (Inspect the DAG)
+
+``` bash
 docker run --rm -it \
   -v "$(pwd)":/work \
   -w /work \
