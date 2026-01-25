@@ -1,0 +1,12 @@
+{
+  "R": {
+    "Version": "4.1.2",
+    "Repositories": [
+      {
+        "Name": "CRAN",
+        "URL": "https://packagemanager.posit.co/cran/2024-01-01"
+      }
+    ]
+  },
+  "Packages": []
+}
