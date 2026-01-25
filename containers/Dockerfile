@@ -1,13 +1,12 @@
-FROM ubuntu:22.04
+FROM rocker/r-ver:4.3.3
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Pin CRAN snapshot for deterministic restores (renv reads this)
+# Pin CRAN snapshot for deterministic restores
 ENV RENV_CONFIG_REPOS_OVERRIDE=https://packagemanager.posit.co/cran/2024-01-01
 
 # Base tools + deps needed to build STAR + R packages
 RUN apt-get update && apt-get install -y \
     python3 python3-pip \
-    r-base \
     git curl wget ca-certificates \
     build-essential \
     zlib1g-dev libbz2-dev liblzma-dev \
@@ -37,16 +36,11 @@ RUN pip3 install --no-cache-dir \
 
 WORKDIR /work
 
-# Pin CRAN snapshot for deterministic restores
-ENV RENV_CONFIG_REPOS_OVERRIDE=https://packagemanager.posit.co/cran/2024-01-01
-
-WORKDIR /work
-
-# renv restore inputs
+# ---- renv restore inputs ----
 COPY renv.lock /work/renv.lock
 COPY renv/ /work/renv/
-COPY renv/vendor/ /work/renv/vendor/
 
-# Install renv (bootstrap) + restore project library from renv.lock
-RUN R -q -e "options(repos=c(CRAN=Sys.getenv('RENV_CONFIG_REPOS_OVERRIDE'))); install.packages('renv')" \
- && R -q -e "renv::restore(prompt=FALSE)"
+# Bootstrap renv + restore (READS lockfile, DOES NOT WRITE IT)
+RUN R -q -e "options(repos=c(CRAN=Sys.getenv('RENV_CONFIG_REPOS_OVERRIDE')))" \
+ && R -q -e "install.packages('renv')" \
+ && R -q -e "renv::restore(project='/work', lockfile='/work/renv.lock', prompt=FALSE)"
