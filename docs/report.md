@@ -72,6 +72,78 @@ reproducible computational workflows.
 - `run_analysis.py`  
   A lightweight Python wrapper that orchestrates Snakemake execution inside
   Docker, enabling section-based execution and preventing accidental full runs.
+  
+## R Environment and Reproducibility Strategy
+
+### Overview
+
+All R-based analyses in this workflow are executed inside a Docker container with a fully specified and reproducible R environment. 
+Dependency management is handled using renv, while containerization ensures isolation from host-specific configurations. 
+This design guarantees that analyses can be reproduced deterministically across machines and over time.
+
+### R Version and Package Management
+
+The R environment is defined using renv, which creates a project-local R library and records exact package versions in a lockfile 
+`renv.lock`. The lockfile captures:
+
+- The exact R version used (R 4.3.3)
+- The CRAN snapshot date (https://packagemanager.posit.co/cran/2024-01-01)
+- All R package versions required for the analysis
+
+During Docker image build, the environment is restored only from this lockfile using renv::restore(). 
+No package installation or snapshotting occurs at runtime, preventing accidental environment drift.
+
+### Vendoring of Seurat
+
+The core analysis depends on Seurat and SeuratObject, which are critical, 
+fast-evolving packages that have historically introduced reproducibility issues due to 
+upstream changes and repository availability.
+
+To eliminate this risk, specific versions are vendored directly into the repository:
+
+- `renv/vendor/seurat-v4.4.0.tar.gz`
+- `renv/vendor/seurat-object-v4.1.4.tar.gz`
+
+These tarballs are installed locally and recorded in the lockfile with Source = "Local". As a result:
+
+Docker builds never rely on GitHub availability or branch state
+
+Seurat versions are fully decoupled from CRAN/Bioconductor changes
+
+The exact Seurat code used in the analysis is preserved with the project
+
+## Docker Integration
+
+The Docker image is built using a rocker-based R image, which provides a fixed R runtime 
+while retaining a Debian/Ubuntu-compatible system environment.
+System-level dependencies required for R packages and external tools 
+(e.g. STAR, FastQC) are installed explicitly during the image build.
+
+- The CRAN snapshot is pinned via an environment variable.
+- The renv.lock file and renv/ directory are copied into the image.
+- A bootstrap installation of renv is performed.
+- renv::restore() installs all R packages into the container’s project library.
+
+Importantly, the Docker build does not modify the lockfile. 
+All dependency changes must be made explicitly on the host and committed to version control.
+
+### Separation of Concerns
+
+- Host system: used only to update dependencies and regenerate the lockfile when necessary.
+- Docker image: consumes the lockfile in read-only fashion and provides a stable execution environment.
+- IDE tooling: automatic IDE-driven package installation is disabled to prevent contamination of the project library.
+
+#### Result
+
+This setup ensures:
+
+- Bitwise reproducibility of the R environment
+- Long-term stability of critical dependencies (notably Seurat)
+- Clear provenance of all software components
+- Safe integration with Snakemake and container-based execution
+
+In summary, the combination of renv, vendored critical packages, 
+and Docker provides a robust and auditable foundation for reproducible single-cell RNA-seq analysis.
 
 ## 4. Execution Model
 The pipeline is orchestrated using Snakemake and executed inside Docker
