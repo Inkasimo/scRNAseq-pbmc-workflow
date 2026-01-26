@@ -1,5 +1,28 @@
-#####This is the start of the R part####
+#Build Seurat objects Scaffold
 
-vector<-c(1,2,3,4,5)
-vector_sum<-sum(vector)
-vector_sum
+suppressPackageStartupMessages({
+  library(optparse)
+  library(Seurat)
+  library(Matrix)
+})
+
+option_list <- list(
+  make_option("--mtx", type = "character"),
+  make_option("--features", type = "character"),
+  make_option("--barcodes", type = "character"),
+  make_option("--outdir", type = "character")
+)
+
+opt <- parse_args(OptionParser(option_list = option_list))
+
+dir.create(opt$outdir, recursive = TRUE, showWarnings = FALSE)
+
+counts <- ReadMtx(
+  mtx = opt$mtx,
+  features = opt$features,
+  cells = opt$barcodes
+)
+
+obj <- CreateSeuratObject(counts)
+
+saveRDS(obj, file.path(opt$outdir, "seurat.rds"))
