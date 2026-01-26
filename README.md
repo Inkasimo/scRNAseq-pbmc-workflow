@@ -27,6 +27,7 @@ This repository is intended as a **technical portfolio / learning project**.
 
 ### Downstream (work in progress)
 
+- Seurat objects
 - Cell-level QC and annotation
 - Differential expression
 - Enrichment analysis
