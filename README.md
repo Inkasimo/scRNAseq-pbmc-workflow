@@ -45,6 +45,7 @@ All core tools are provided inside the Docker image, including:
 - FastQC
 - MultiQC
 - Cutadapt
+- Seurat
 
 ### Optional (wrapper only)
 
