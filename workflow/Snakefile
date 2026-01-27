@@ -258,14 +258,16 @@ rule multiqc_raw:
     shell:
         r"""
         set -euo pipefail
-        mkdir -p results/qc/multiqc/raw
-        mkdir -p results/logs/qc
+        mkdir -p results/qc/multiqc/raw results/logs/qc
 
         echo "[START] $(date)" > {log}
         multiqc results/qc/fastqc/raw \
-            -o results/qc/multiqc/raw >> {log} 2>&1
+            -o results/qc/multiqc/raw \
+            --filename multiqc_report.html \
+            >> {log} 2>&1
         echo "[END] $(date)" >> {log}
         """
+
         
 rule multiqc_trimmed:
     input:
@@ -278,8 +280,12 @@ rule multiqc_trimmed:
         r"""
         set -euo pipefail
         mkdir -p results/qc/multiqc/trimmed results/logs/qc
+
         echo "[START] $(date)" > {log}
-        multiqc results/qc/fastqc/trimmed -o results/qc/multiqc/trimmed >> {log} 2>&1
+        multiqc results/qc/fastqc/trimmed \
+            -o results/qc/multiqc/trimmed \
+            --filename multiqc_report.html \
+            >> {log} 2>&1
         echo "[END] $(date)" >> {log}
         """
 
