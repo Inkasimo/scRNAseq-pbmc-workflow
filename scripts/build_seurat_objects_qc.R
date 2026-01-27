@@ -15,6 +15,14 @@ option_list <- list(
   make_option("--donor", type = "character", default = "donor")
 )
 
+#base <- "/mnt/g/scRNAseq_pbmc_workflow/results/alignment/starsolo/raw/donor1/Solo.out/Gene/filtered"
+
+#counts <- ReadMtx(
+  #mtx = file.path(base, "matrix.mtx"),
+  #features = file.path(base, "features.tsv"),
+  #cells = file.path(base, "barcodes.tsv")
+#)
+
 opt <- parse_args(OptionParser(option_list = option_list))
 
 dir.create(opt$outdir, recursive = TRUE, showWarnings = FALSE)
@@ -87,6 +95,59 @@ ggsave(file.path(plots_dir, "hist_nFeat_RNA.png"), plot = p_hist1, width = 5, he
 ggsave(file.path(plots_dir, "hist_nCount_RNA.png"), plot = p_hist2, width = 5, height = 4, dpi = 300)
 ggsave(file.path(plots_dir, "hist_mt_RNA.png"), plot = p_hist3, width = 5, height = 4, dpi = 300)
 
+# -------------------------
+# QC TABLE 
+# -------------------------
+qc <- obj@meta.data
+
+q_probs <- c(.01, .05, .10, .25, .50, .75, .90, .95, .99)
+
+q_fmt <- function(x) {
+  qs <- quantile(x, probs = q_probs, na.rm = TRUE, names = FALSE)
+  names(qs) <- paste0("q", sprintf("%02d", q_probs * 100))
+  qs
+}
+
+nf_q  <- q_fmt(qc$nFeature_RNA)
+nc_q  <- q_fmt(qc$nCount_RNA)
+mt_q  <- q_fmt(qc$percent.mt)
+
+metrics <- data.frame(
+  donor = opt$donor,
+  n_cells = nrow(qc),
+
+  median_nFeature_RNA = median(qc$nFeature_RNA),
+  median_nCount_RNA   = median(qc$nCount_RNA),
+  median_percent_mt   = median(qc$percent.mt, na.rm = TRUE),
+
+  pct_cells_mt_gt_20  = mean(qc$percent.mt > 20, na.rm = TRUE) * 100,
+  pct_cells_mt_gt_25  = mean(qc$percent.mt > 25, na.rm = TRUE) * 100,
+  pct_cells_mt_gt_30  = mean(qc$percent.mt > 30, na.rm = TRUE) * 100,
+
+  pct_cells_nFeature_lt_500  = mean(qc$nFeature_RNA < 500) * 100,
+  pct_cells_nFeature_gt_6000 = mean(qc$nFeature_RNA > 6000) * 100,
+
+  n_drop_mt20 = sum(qc$percent.mt > 20, na.rm = TRUE),
+  n_drop_mt25 = sum(qc$percent.mt > 25, na.rm = TRUE),
+  n_drop_mt30 = sum(qc$percent.mt > 30, na.rm = TRUE)
+)
+
+# bind quantiles with prefixes so it stays one row per donor
+metrics <- cbind(
+  metrics,
+  setNames(as.data.frame(as.list(nf_q)), paste0("nFeature_", names(nf_q))),
+  setNames(as.data.frame(as.list(nc_q)), paste0("nCount_", names(nc_q))),
+  setNames(as.data.frame(as.list(mt_q)), paste0("mt_", names(mt_q)))
+)
+
+
+write.table(
+  metrics,
+  file = file.path(opt$outdir, "qc_metrics.tsv"),
+  sep = "\t",
+  row.names = FALSE,
+  quote = FALSE
+)
 
 
 #obj_filt <- subset(
