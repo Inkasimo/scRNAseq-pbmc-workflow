@@ -4,7 +4,6 @@ suppressPackageStartupMessages({
   library(Seurat)
   library(Matrix)
   library(ggplot2)
-  library(patchwork)
 })
 
 option_list <- list(
