@@ -1,4 +1,6 @@
 pbmc:
+
+  #TODO: Deal with the fastqdir ambiguity
   donor1:
     url: "https://cf.10xgenomics.com/samples/cell-exp/9.0.0/5k_Human_Donor1_PBMC_3p_gem-x_Multiplex/5k_Human_Donor1_PBMC_3p_gem-x_Multiplex_fastqs.tar"
     fastq_dir: "data/raw/donor1/5k_Human_Donor1_PBMC_3p_gem-x_GEX_fastqs"

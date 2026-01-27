@@ -136,6 +136,8 @@ rule all:
 
 # ---- FASTQ acquisition: optional download vs presence check ----
 
+# TODO: Deal with the output folder ambiguity
+
 if DOWNLOAD_FASTQS:
     rule download_fastqs:
         output:
