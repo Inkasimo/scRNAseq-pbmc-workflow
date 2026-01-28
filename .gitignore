@@ -17,4 +17,7 @@ config/config.yaml
 ?/.java/
 scripts/clean_ref_only.sh
 scripts/clean_outputs.sh
-scripts/run_script.R
+scripts/run_script.Rrenv/library/
+renv/staging/
+renv/local/
+
