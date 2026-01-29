@@ -18,6 +18,16 @@ RUN apt-get update && apt-get install -y \
     libcurl4-openssl-dev libssl-dev libxml2-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# STAR (build from source tag)
+ARG STAR_VERSION=2.7.11b
+RUN mkdir -p /opt && \
+    curl -L --fail -o /tmp/STAR.tar.gz \
+      https://github.com/alexdobin/STAR/archive/refs/tags/${STAR_VERSION}.tar.gz && \
+    tar -xzf /tmp/STAR.tar.gz -C /opt && \
+    make -C /opt/STAR-${STAR_VERSION}/source STAR && \
+    ln -s /opt/STAR-${STAR_VERSION}/source/STAR /usr/local/bin/STAR && \
+    rm -f /tmp/STAR.tar.gz
+
 # Install renv globally
 RUN R -q -e "install.packages('renv', repos=Sys.getenv('RENV_CONFIG_REPOS_OVERRIDE'))"
 
