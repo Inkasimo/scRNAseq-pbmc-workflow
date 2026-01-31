@@ -284,3 +284,25 @@ Think about it
 The full pipeline, including tool versions and execution steps, is available
 in the accompanying GitHub repository.
 
+# Downstream technical notes
+
+1) How the R environment is created in Docker and “picked up” by the workflow
+
+The container builds on rocker/r-ver:4.3.3 and uses renv to make the R package set reproducible. In the Dockerfile, you set RENV_CONFIG_REPOS_OVERRIDE (Posit Package Manager snapshot) plus RENV_PATHS_LIBRARY=/opt/renv/library and RENV_PATHS_CACHE=/opt/renv/cache, then install renv globally and run renv::restore() during the image build. That means the final image already contains a fully restored R library under /opt/renv/library, so runtime does not need to download/install packages.
+
+Snakemake “reads” this environment implicitly because your workflow is executed inside that same Docker image (via docker run ... scrnaseq-workflow snakemake ...). When a rule calls Rscript ..., it uses the container’s R binary and the restored renv library paths. You also copy renv.lock, renv/activate.R, and .Rprofile into /work during build; with WORKDIR /work, Rscript runs in the project context where renv auto-activation is available (and the library path is already pinned via RENV_PATHS_LIBRARY). Net effect: Rscript calls in the Snakefile resolve packages consistently across hosts.
+
+2) Downstream logic (Seurat object + QC)
+
+The downstream step is encapsulated in rule seurat_qc. It consumes STARsolo “filtered” count outputs (matrix.mtx*, barcodes.tsv*, and features.tsv*/genes.tsv*) and runs scripts/build_seurat_objects_qc.R, writing both an .rds Seurat object and a sentinel seurat_qc.done file. The sentinel is what Snakemake uses as the “this stage completed” marker; it prevents re-running unless inputs/metadata say otherwise.
+
+Mode routing is handled by the trim_enabled() / is_trimmed() logic plus the LEGACY_BRANCH mapping. Conceptually:
+
+If trim_enabled=false ⇒ “untrimmed” downstream uses alignment outputs in results/alignment/starsolo/raw/...
+
+If trim_enabled=true ⇒ “trimmed” downstream uses results/alignment/starsolo/trimmed/...
+
+That mapping is why downstream paths use trim_state (untrimmed vs trimmed) while STARsolo folders remain raw/trimmed. The top-level rule all also respects this: it only expands the downstream targets for the active mode (raw or trimmed), so you don’t accidentally build both branches unless you explicitly request both via targets/config.
+
+Finally, your wrapper (run_analysis.py) implements “section → target set” selection. The downstream and build_seurat_object_qc sections simply emit the relevant results/downstream/seurat/{trim_state}/{donor}/seurat_qc.done targets (for all donors by default), and Snakemake computes the minimal DAG needed to produce them from whatever already exists upstream.
+
