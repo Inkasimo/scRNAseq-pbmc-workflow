@@ -198,10 +198,11 @@ vars_to_regress <- c("percent.mt")  # optionally c("percent.mt", "nCount_RNA")
 
 obj_filt <- ScaleData(
   obj_filt,
-  features = rownames(obj_filt),
+  features = VariableFeatures(obj_filt),
   vars.to.regress = vars_to_regress,
   verbose = FALSE
 )
+
 
 saveRDS(obj_filt, file.path(opt$outdir, paste0(opt$donor, "_qcfilt_norm.rds")))
 
@@ -250,7 +251,4 @@ write.table(
   row.names = FALSE,
   quote = FALSE
 )
-
-
-
 
