@@ -294,6 +294,10 @@ Snakemake “reads” this environment implicitly because your workflow is execu
 
 2) Downstream logic (Seurat object + QC)
 
+Starsolo folders raw, filtered
+
+vs upstream raw, trimmed
+
 The downstream step is encapsulated in rule seurat_qc. It consumes STARsolo “filtered” count outputs (matrix.mtx*, barcodes.tsv*, and features.tsv*/genes.tsv*) and runs scripts/build_seurat_objects_qc.R, writing both an .rds Seurat object and a sentinel seurat_qc.done file. The sentinel is what Snakemake uses as the “this stage completed” marker; it prevents re-running unless inputs/metadata say otherwise.
 
 Mode routing is handled by the trim_enabled() / is_trimmed() logic plus the LEGACY_BRANCH mapping. Conceptually:
