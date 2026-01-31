@@ -310,7 +310,7 @@ That mapping is why downstream paths use trim_state (untrimmed vs trimmed) while
 
 Finally, your wrapper (run_analysis.py) implements “section → target set” selection. The downstream and build_seurat_object_qc sections simply emit the relevant results/downstream/seurat/{trim_state}/{donor}/seurat_qc.done targets (for all donors by default), and Snakemake computes the minimal DAG needed to produce them from whatever already exists upstream.
 
-QC filtering and normalization rationale
+## QC filtering and normalization rationale
 Overview
 
 This workflow performs donor-specific quality control and normalization of single-cell RNA-seq data prior to downstream analysis. The design prioritizes robustness, reproducibility, and interpretability, rather than maximizing sensitivity or applying complex statistical modeling. All decisions are motivated by the structure of the dataset (PBMCs from four donors) and the intended downstream analyses (cell-type–aware DEG, pseudobulk aggregation, and coexpression networks).
