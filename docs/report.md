@@ -310,3 +310,136 @@ That mapping is why downstream paths use trim_state (untrimmed vs trimmed) while
 
 Finally, your wrapper (run_analysis.py) implements “section → target set” selection. The downstream and build_seurat_object_qc sections simply emit the relevant results/downstream/seurat/{trim_state}/{donor}/seurat_qc.done targets (for all donors by default), and Snakemake computes the minimal DAG needed to produce them from whatever already exists upstream.
 
+QC filtering and normalization rationale
+Overview
+
+This workflow performs donor-specific quality control and normalization of single-cell RNA-seq data prior to downstream analysis. The design prioritizes robustness, reproducibility, and interpretability, rather than maximizing sensitivity or applying complex statistical modeling. All decisions are motivated by the structure of the dataset (PBMCs from four donors) and the intended downstream analyses (cell-type–aware DEG, pseudobulk aggregation, and coexpression networks).
+
+QC filtering strategy
+Data-adaptive thresholds
+
+Rather than applying fixed global cutoffs, QC thresholds are derived from donor-specific empirical distributions (qc_metrics.tsv). This avoids over-filtering donors with systematically higher or lower sequencing depth and ensures that filtering decisions are data-driven and reproducible.
+
+The following rules are applied per donor:
+
+Mitochondrial content
+percent.mt ≤ min(mt_q90, 25)
+This caps extreme mitochondrial outliers while preventing overly aggressive filtering in donors with modestly elevated MT fractions.
+
+Gene complexity (nFeature_RNA)
+
+Lower bound: nFeature_q05
+Removes empty droplets and very low-quality cells.
+
+Upper bound: min(nFeature_q99, 6000)
+Acts as a conservative doublet/multiplet guardrail.
+
+UMI counts (nCount_RNA)
+
+Lower bound: nCount_q05
+
+Upper bound: nCount_q99
+These bounds are kept consistent with the gene complexity filters.
+
+Hemoglobin content (PBMC-specific)
+percent.hb ≤ 1
+This removes residual erythrocyte contamination without affecting true PBMC populations.
+
+Transparency and auditability
+
+For each donor, the pipeline records:
+
+exact QC thresholds used (qc_thresholds.tsv)
+
+number and percentage of cells removed
+
+per-rule and multi-rule failure counts (qc_filter_summary.tsv)
+
+This makes QC decisions explicit, inspectable, and easy to compare across donors.
+
+Normalization strategy
+Choice of LogNormalize
+
+After QC filtering, expression values are normalized using Seurat’s LogNormalize method (library-size scaling followed by log-transformation).
+
+This choice is intentional:
+
+Log-normalized expression preserves relative expression relationships and covariance structure, which is important for:
+
+pseudobulk aggregation
+
+coexpression network analysis
+
+It avoids introducing model-based residuals that can complicate interpretation in small-n, donor-aware analyses.
+
+It is simple, transparent, and widely understood, making the pipeline easier to reason about and explain.
+
+More complex alternatives (e.g. SCTransform) were considered but deliberately not used in order to:
+
+avoid implicit information sharing across donors,
+
+preserve biologically interpretable expression values,
+
+keep downstream aggregation and correlation analyses well-defined.
+
+Variable feature selection
+
+Highly variable genes (HVGs) are identified using the VST method (n = 2000).
+This step is used to:
+
+focus dimensionality reduction on informative genes,
+
+reduce noise from low-variance features,
+
+keep computation predictable.
+
+HVG selection does not alter the normalized expression matrix used for downstream biological analyses.
+
+Scaling and regression (visualization only)
+
+Expression values are scaled and mitochondrial percentage is regressed out only for highly variable genes. This step is included exclusively to support dimensionality reduction and visualization (PCA / UMAP).
+
+Key points:
+
+Scaling is restricted to HVGs to avoid unnecessary transformation of low-information genes.
+
+Regression is limited to percent.mt to reduce technical structure in embeddings.
+
+Scaled data are not used for:
+
+differential expression
+
+pseudobulk analysis
+
+coexpression networks
+
+This separation ensures that visualization does not distort biologically meaningful signal used in inference.
+
+Outputs and reproducibility
+
+The final QC-filtered and normalized Seurat object contains:
+
+raw counts
+
+log-normalized expression (RNA@data)
+
+HVGs
+
+scaled data for visualization (RNA@scale.data)
+
+All normalization parameters and summary statistics are written to disk (norm_metrics.tsv), and diagnostic plots are generated to confirm that normalization behaves as expected.
+
+Summary
+
+This QC and normalization strategy is intentionally conservative and explicit. It favors:
+
+donor-aware filtering,
+
+data-adaptive thresholds,
+
+interpretable normalization,
+
+clear separation between visualization and inference.
+
+The result is a stable foundation for downstream analyses without overfitting assumptions or obscuring biological signal.
+
