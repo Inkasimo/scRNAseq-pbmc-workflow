@@ -76,6 +76,22 @@ SECTION_TARGETS = {
         "results/alignment/starsolo/trimmed/{donor}/starsolo.done",
     ],
 
+    "build_seurat_object_qc_untrimmed": [
+        "results/downstream/seurat/untrimmed/{donor}/seurat_qc.done",
+    ],
+    "build_seurat_object_qc_trimmed": [
+        "data/trimmed/{donor}/trim.done",
+        "results/downstream/seurat/trimmed/{donor}/seurat_qc.done",
+    ],
+
+    "downstream_untrimmed": [
+        "results/downstream/seurat/untrimmed/{donor}/seurat_qc.done",
+    ],
+    "downstream_trimmed": [
+        "data/trimmed/{donor}/trim.done",
+        "results/downstream/seurat/trimmed/{donor}/seurat_qc.done",
+    ],
+
     "unlock": [],
 }
 
@@ -159,6 +175,16 @@ def main() -> int:
     sp_upstream_no_dl.add_argument("--trimmed", action="store_true")
     add_common(sp_upstream_no_dl)
 
+    sp_seurat = sub.add_parser("build_seurat_object_qc")
+    sp_seurat.add_argument("--trimmed", action="store_true")
+    sp_seurat.add_argument("--donor", action="append") 
+    add_common(sp_seurat)
+
+    sp_downstream = sub.add_parser("downstream")
+    sp_downstream.add_argument("--trimmed", action="store_true")
+    add_common(sp_downstream)
+
+
     sp_unlock = sub.add_parser("unlock")
     add_common(sp_unlock)
 
@@ -178,6 +204,8 @@ def main() -> int:
             "upstream_no_download",
             "all",
             "all_no_download",
+            "build_seurat_object_qc",
+            "downstream",
             "unlock",
         ]:
             print(f"  - {s}")
@@ -240,6 +268,33 @@ def main() -> int:
                 targets.extend(t.format(donor=d) for d in donors)
             else:
                 targets.append(t)
+
+
+    elif args.section == "build_seurat_object_qc":
+        key = "build_seurat_object_qc_trimmed" if getattr(args, "trimmed", False) else "build_seurat_object_qc_untrimmed"
+
+        # donors selected
+        selected = donors
+        if getattr(args, "donor", None):
+            selected = donors if args.donor == ["all"] else args.donor
+
+        for t in SECTION_TARGETS[key]:
+            if "{donor}" in t:
+                targets.extend(t.format(donor=d) for d in selected)
+            else:
+                targets.append(t)
+
+
+    
+    elif args.section == "downstream":
+        key = "downstream_trimmed" if getattr(args, "trimmed", False) else "downstream_untrimmed"
+        for t in SECTION_TARGETS[key]:
+            if "{donor}" in t:
+                targets.extend(t.format(donor=d) for d in donors)
+            else:
+                targets.append(t)
+
+
 
     elif args.section in ("all", "all_no_download", "unlock"):
         targets = []

@@ -19,6 +19,13 @@ TRIM_R2_ADAPTER = str(config.get("trim", {}).get("adapter_r2", "AGATCGGAAGAG"))
 TRIM_R2_QUAL = int(config.get("trim", {}).get("q_r2", 20))
 TRIM_R2_MINLEN = int(config.get("trim", {}).get("minlen_r2", 20))
 
+# Canonical → legacy mapping (DO NOT change legacy folders)
+# This is because I realized starsolo also has "raw"
+LEGACY_BRANCH = {
+    "untrimmed": "raw",
+    "trimmed": "trimmed"
+}
+
 
 # Helpers
 
@@ -125,6 +132,13 @@ rule all:
             "results/alignment/starsolo/{m}/{donor}/starsolo.done",
             donor=DONORS,
             m=["trimmed"] if is_trimmed() else ["raw"],
+        ),
+
+                # Seurat/QC downstream (only for the active mode)
+        expand(
+            "results/downstream/seurat/{trim_state}/{donor}/seurat_qc.done",
+            donor=DONORS,
+            trim_state=["trimmed"] if is_trimmed() else ["untrimmed"],
         ),
 
 
@@ -615,3 +629,38 @@ rule starsolo_trimmed:
 # 
 # --- DOWNSTREAM RULES
 #
+
+rule seurat_qc:
+    input:
+        starsolo_done=lambda wc: f"results/alignment/starsolo/{LEGACY_BRANCH[wc.trim_state]}/{wc.donor}/starsolo.done"
+    output:
+        done="results/downstream/seurat/{trim_state}/{donor}/seurat_qc.done"
+        # (optional) only keep this if your R script truly writes it:
+        # rds="results/downstream/seurat/{trim_state}/{donor}/seurat_object.rds"
+    params:
+        filtered_dir=lambda wc: f"results/alignment/starsolo/{LEGACY_BRANCH[wc.trim_state]}/{wc.donor}/Solo.out/Gene/filtered",
+        outdir=lambda wc: f"results/downstream/seurat/{wc.trim_state}/{wc.donor}"
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p "{params.outdir}"
+
+        MTX="{params.filtered_dir}/matrix.mtx"
+        BARCODES="{params.filtered_dir}/barcodes.tsv"
+        FEATURES="{params.filtered_dir}/features.tsv"
+
+        test -s "$MTX"
+        test -s "$BARCODES"
+        test -s "$FEATURES"
+
+        Rscript scripts/build_seurat_objects_qc.R \
+            --mtx "$MTX" \
+            --features "$FEATURES" \
+            --barcodes "$BARCODES" \
+            --outdir "{params.outdir}" \
+            --donor "{wildcards.donor}"
+
+        tmp="{output.done}.tmp"
+        echo ok > "$tmp"
+        mv -f "$tmp" "{output.done}"
+        """
