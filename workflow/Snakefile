@@ -141,6 +141,13 @@ rule all:
             trim_state=["trimmed"] if is_trimmed() else ["untrimmed"],
         ),
 
+                # Seurat/filtering and normalization
+        expand(
+            "results/downstream/seurat/{trim_state}/{donor}/seurat_filt_normalized/seurat_filt_normalize.done",
+            donor=DONORS,
+            trim_state=["trimmed"] if is_trimmed() else ["untrimmed"],
+        ),
+
 
 
 
@@ -669,7 +676,7 @@ rule seurat_filt_normalize:
     input:
         seurat_done="results/downstream/seurat/{trim_state}/{donor}/seurat_qc.done"
     output:
-        done="results/downstream/seurat/{trim_state}/{donor}/seurat_filt_normalize/seurat_filt_normalize.done"
+        done="results/downstream/seurat/{trim_state}/{donor}/seurat_filt_normalized/seurat_filt_normalize.done"
     params:
         seurat_dir=lambda wc: f"results/downstream/seurat/{wc.trim_state}/{wc.donor}",
         outdir=lambda wc: f"results/downstream/seurat/{wc.trim_state}/{wc.donor}/seurat_filt_normalized"
@@ -679,7 +686,7 @@ rule seurat_filt_normalize:
         mkdir -p "{params.outdir}"
 
         SEURAT="{params.seurat_dir}/{wildcards.donor}_object.rds"
-        QC="{params.seurar_dir}/qc_metrics.tsv"
+        QC="{params.seurat_dir}/qc_metrics.tsv"
         
         test -s "$SEURAT"
         test -s "$QC"

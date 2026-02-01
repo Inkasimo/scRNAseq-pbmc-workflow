@@ -84,12 +84,24 @@ SECTION_TARGETS = {
         "results/downstream/seurat/trimmed/{donor}/seurat_qc.done",
     ],
 
+
+    "filter_and_normalize_seurat_untrimmed":[
+        "results/downstream/seurat/untrimmed/{donor}/seurat_qc.done",
+        "results/downstream/seurat/untrimmed/{donor}/seurat_filt_normalized/seurat_filt_normalize.done",
+    ],
+
+    "filter_and_normalize_seurat_trimmed":[
+        "results/downstream/seurat/trimmed/{donor}/seurat_qc.done",
+        "results/downstream/seurat/trimmed/{donor}/seurat_filt_normalized/seurat_filt_normalize.done",
+    ],
+
     "downstream_untrimmed": [
         "results/downstream/seurat/untrimmed/{donor}/seurat_qc.done",
+        "results/downstream/seurat/untrimmed/{donor}/seurat_filt_normalized/seurat_filt_normalize.done",
     ],
     "downstream_trimmed": [
-        "data/trimmed/{donor}/trim.done",
         "results/downstream/seurat/trimmed/{donor}/seurat_qc.done",
+        "results/downstream/seurat/trimmed/{donor}/seurat_filt_normalized/seurat_filt_normalize.done",
     ],
 
     "unlock": [],
@@ -180,6 +192,11 @@ def main() -> int:
     sp_seurat.add_argument("--donor", action="append") 
     add_common(sp_seurat)
 
+    sp_filt_norm_seurat = sub.add_parser("filter_and_normalize_seurat")
+    sp_filt_norm_seurat.add_argument("--trimmed", action="store_true")
+    sp_filt_norm_seurat.add_argument("--donor", action="append") 
+    add_common(sp_filt_norm_seurat)
+
     sp_downstream = sub.add_parser("downstream")
     sp_downstream.add_argument("--trimmed", action="store_true")
     add_common(sp_downstream)
@@ -205,6 +222,7 @@ def main() -> int:
             "all",
             "all_no_download",
             "build_seurat_object_qc",
+            "filter_and_normalize_seurat",
             "downstream",
             "unlock",
         ]:
@@ -272,6 +290,20 @@ def main() -> int:
 
     elif args.section == "build_seurat_object_qc":
         key = "build_seurat_object_qc_trimmed" if getattr(args, "trimmed", False) else "build_seurat_object_qc_untrimmed"
+
+        # donors selected
+        selected = donors
+        if getattr(args, "donor", None):
+            selected = donors if args.donor == ["all"] else args.donor
+
+        for t in SECTION_TARGETS[key]:
+            if "{donor}" in t:
+                targets.extend(t.format(donor=d) for d in selected)
+            else:
+                targets.append(t)
+    
+    elif args.section == "filter_and_normalize_seurat":
+        key = "filter_and_normalize_seurat_trimmed" if getattr(args, "trimmed", False) else "filter_and_normalize_seurat_untrimmed"
 
         # donors selected
         selected = donors

@@ -173,7 +173,7 @@ if ("percent.mt" %in% colnames(df) && !all(is.na(df$percent.mt))) {
 }
 
 # marker file
-file.create(file.path(opt$outdir, "seurat_qcfilt.done"))
+#file.create(file.path(opt$outdir, "seurat_qcfilt.done"))
 
 
 ####Normalization. Apply first lognormalize plus findvariable features vst. 
@@ -204,7 +204,7 @@ obj_filt <- ScaleData(
 )
 
 
-saveRDS(obj_filt, file.path(opt$outdir, paste0(opt$donor, "_qcfilt_norm.rds")))
+saveRDS(obj_filt, file.path(opt$outdir, paste0(opt$donor, "_qcfilt_norm_object.rds")))
 
 #Normalization QC
 
