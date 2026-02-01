@@ -638,7 +638,7 @@ rule seurat_qc:
         # (optional) only keep this if your R script truly writes it:
         # rds="results/downstream/seurat/{trim_state}/{donor}/seurat_object.rds"
     params:
-        filtered_dir=lambda wc: f"results/alignment/starsolo/{LEGACY_BRANCH[wc.trim_state]}/{wc.donor}/Solo.out/Gene/filtered",
+        filtered_dir=lambda wc: f"results/alignment/starsolo/{LEGACY_BRANCH[wc.trim_state]}/{wc.donor}",
         outdir=lambda wc: f"results/downstream/seurat/{wc.trim_state}/{wc.donor}"
     shell:
         r"""
@@ -657,6 +657,37 @@ rule seurat_qc:
             --mtx "$MTX" \
             --features "$FEATURES" \
             --barcodes "$BARCODES" \
+            --outdir "{params.outdir}" \
+            --donor "{wildcards.donor}"
+
+        tmp="{output.done}.tmp"
+        echo ok > "$tmp"
+        mv -f "$tmp" "{output.done}"
+        """
+
+rule seurat_filt_normalize:
+    input:
+        seurat_done="results/downstream/seurat/{trim_state}/{donor}/seurat_qc.done"
+    output:
+        done="results/downstream/seurat/{trim_state}/{donor}/seurat_filt_normalize/seurat_filt_normalize.done"
+    params:
+        seurat_dir=lambda wc: f"results/downstream/seurat/{wc.trim_state}/{wc.donor}",
+        outdir=lambda wc: f"results/downstream/seurat/{wc.trim_state}/{wc.donor}/seurat_filt_normalized"
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p "{params.outdir}"
+
+        SEURAT="{params.seurat_dir}/{wildcards.donor}_object.rds"
+        QC="{params.seurar_dir}/qc_metrics.tsv"
+        
+        test -s "$SEURAT"
+        test -s "$QC"
+    
+
+        Rscript scripts/qcfilt_normalize_seurat.R \
+            --seurat "$SEURAT" \
+            --qc_metrics "$QC" \
             --outdir "{params.outdir}" \
             --donor "{wildcards.donor}"
 
