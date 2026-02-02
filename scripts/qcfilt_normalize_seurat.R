@@ -1,5 +1,26 @@
 #!/usr/bin/env Rscript
 
+# ADD HARD CAPS TO CONFIG
+
+#FILTER
+
+#mt_quantile (0.90)
+#mt_cap (25)
+#nFeature_min_quantile (0.05)
+#nFeature_max_quantile (0.99)
+#nFeature_cap (6000)
+#nCount_min_quantile (0.05)
+#nCount_max_quantile (0.99)
+#hb_max (1 or null/disable)
+
+#normalization
+
+#method ("LogNormalize")
+#scale_factor (10000)
+#n_hvg (2000)
+#selection.method = "vst"
+
+regress (["percent.mt"])
 # QC-filter Seurat object 
 suppressPackageStartupMessages({
   library(optparse)

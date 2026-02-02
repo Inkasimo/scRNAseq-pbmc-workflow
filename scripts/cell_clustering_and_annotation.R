@@ -69,6 +69,7 @@ obj <- FindClusters(obj, resolution = opt$resolution, verbose = FALSE)
 # Run UMAP if missing
 if (!"umap" %in% names(obj@reductions)) {
   #obj <- RunUMAP(obj, dims = 1:dims, verbose = FALSE)
+  set.seed(opt$seed)
   obj <- RunUMAP(obj, dims = 1:opt$dims, verbose = FALSE)
 }
 

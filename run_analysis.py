@@ -95,13 +95,23 @@ SECTION_TARGETS = {
         "results/downstream/seurat/trimmed/{donor}/seurat_filt_normalized/seurat_filt_normalize.done",
     ],
 
+    "cluster_annotate_seurat_untrimmed": [
+        "results/downstream/seurat/untrimmed/{donor}/seurat_cluster_annot/seurat_cluster_annot.done",
+    ],
+    "cluster_annotate_seurat_trimmed": [
+        "results/downstream/seurat/trimmed/{donor}/seurat_cluster_annot/seurat_cluster_annot.done",
+    ],
+
+
     "downstream_untrimmed": [
         "results/downstream/seurat/untrimmed/{donor}/seurat_qc.done",
         "results/downstream/seurat/untrimmed/{donor}/seurat_filt_normalized/seurat_filt_normalize.done",
+        "results/downstream/seurat/untrimmed/{donor}/seurat_cluster_annot/seurat_cluster_annot.done",
     ],
     "downstream_trimmed": [
         "results/downstream/seurat/trimmed/{donor}/seurat_qc.done",
         "results/downstream/seurat/trimmed/{donor}/seurat_filt_normalized/seurat_filt_normalize.done",
+        "results/downstream/seurat/trimmed/{donor}/seurat_cluster_annot/seurat_cluster_annot.done",
     ],
 
     "unlock": [],
@@ -197,6 +207,12 @@ def main() -> int:
     sp_filt_norm_seurat.add_argument("--donor", action="append") 
     add_common(sp_filt_norm_seurat)
 
+    sp_cluster_annot = sub.add_parser("cluster_annotate_seurat")
+    sp_cluster_annot.add_argument("--trimmed", action="store_true")
+    sp_cluster_annot.add_argument("--donor", action="append")
+    add_common(sp_cluster_annot)
+
+
     sp_downstream = sub.add_parser("downstream")
     sp_downstream.add_argument("--trimmed", action="store_true")
     add_common(sp_downstream)
@@ -223,6 +239,7 @@ def main() -> int:
             "all_no_download",
             "build_seurat_object_qc",
             "filter_and_normalize_seurat",
+            "cluster_annotate_seurat",
             "downstream",
             "unlock",
         ]:
@@ -315,6 +332,20 @@ def main() -> int:
                 targets.extend(t.format(donor=d) for d in selected)
             else:
                 targets.append(t)
+
+    elif args.section == "cluster_annotate_seurat":
+        key = "cluster_annotate_seurat_trimmed" if getattr(args, "trimmed", False) else "cluster_annotate_seurat_untrimmed"
+
+        selected = donors
+        if getattr(args, "donor", None):
+            selected = donors if args.donor == ["all"] else args.donor
+
+        for t in SECTION_TARGETS[key]:
+            if "{donor}" in t:
+                targets.extend(t.format(donor=d) for d in selected)
+            else:
+                targets.append(t)
+
 
 
     

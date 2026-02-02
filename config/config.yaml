@@ -40,3 +40,8 @@ ref:
   gtf_url: "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_45/gencode.v45.annotation.gtf.gz"
 
   build_star_index: false
+
+seurat_annotation:
+  dims: 30
+  resolution: 0.3
+  seed: 42

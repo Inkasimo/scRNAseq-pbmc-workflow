@@ -443,3 +443,190 @@ clear separation between visualization and inference.
 
 The result is a stable foundation for downstream analyses without overfitting assumptions or obscuring biological signal.
 
+
+## Cell clustering and marker-based annotation
+Purpose and positioning in the pipeline
+
+This step performs cell clustering, low-dimensional embedding, and cell type annotation on previously QC-filtered and normalized Seurat objects. It is intentionally placed after QC filtering and normalization, and before any differential expression or downstream biological analyses.
+
+At this stage, the goal is not discovery-grade annotation, but:
+
+biologically coherent clustering,
+
+transparent and reproducible cell type assignment,
+
+generation of interpretable QC and annotation summaries suitable for reporting.
+
+All operations are performed inside a Dockerized R environment to guarantee reproducibility.
+
+Inputs and assumptions
+Input object
+
+The script consumes a single Seurat object (*_qcfilt_norm_object.rds) that:
+
+originates from STARsolo filtered gene–barcode matrices,
+
+has undergone QC filtering (mitochondrial, feature, count thresholds),
+
+has been normalized (LogNormalize) and scaled,
+
+has variable features already identified.
+
+No assumptions are made about prior clustering or embeddings.
+
+Marker definitions
+
+Cell type annotation is driven by explicit, user-supplied marker sets, provided as an R script defining a named list:
+
+markers_pbmc <- list(...)
+
+
+This design:
+
+avoids hard-coding biological assumptions into the pipeline,
+
+makes annotation logic inspectable and version-controlled,
+
+allows marker sets to be swapped without modifying the pipeline.
+
+Only markers present in the Seurat object are used; marker sets with fewer than two detected genes are skipped.
+
+Dimensionality reduction and clustering
+PCA
+
+If PCA has not already been computed, it is run on the previously identified variable features. This ensures robustness when the object is reused across pipeline stages.
+
+Graph construction and clustering
+
+Nearest-neighbor graphs are constructed using the first N principal components (dims, default = 30).
+
+Clustering is performed using the Louvain algorithm (FindClusters) with a moderate resolution (default = 0.3).
+
+These defaults are chosen to:
+
+avoid over-fragmentation of PBMC populations,
+
+produce stable, interpretable clusters,
+
+align with common PBMC analysis conventions.
+
+UMAP embedding
+
+UMAP is computed only if not already present. A fixed random seed is used to ensure deterministic embeddings across runs.
+
+Marker-based scoring and cell type assignment
+Module scoring
+
+For each marker set, Seurat’s AddModuleScore is applied independently. This yields one score per cell per candidate cell type, reflecting relative enrichment of the marker genes.
+
+Scoring is performed:
+
+on the active assay,
+
+without marker search expansion,
+
+with predictable and explicit column naming.
+
+Per-cell annotation
+
+Each cell is assigned a provisional label (cell_type_pred) by selecting the marker set with the highest module score. This produces a transparent, rule-based annotation that is easy to inspect and audit.
+
+This step is intentionally simple:
+
+no classifier training,
+
+no reference projection,
+
+no hidden model parameters.
+
+Cluster-level consensus annotation
+
+To stabilize annotations for reporting and downstream summaries, a cluster-majority label is computed:
+
+For each cluster, the most frequent per-cell predicted label is assigned.
+
+This label is stored as cell_type_cluster_majority.
+
+This separation between:
+
+per-cell predictions and
+
+cluster-level consensus
+
+allows both granular inspection and robust summarization.
+
+Outputs
+Annotated Seurat object
+
+The final object includes:
+
+clustering results,
+
+UMAP embeddings,
+
+per-cell predicted labels,
+
+per-cluster majority labels.
+
+This object is saved for reuse in downstream analyses.
+
+Tabular summaries
+
+The script produces several TSV files suitable for reporting:
+
+per-cell type counts,
+
+cluster × cell type contingency tables,
+
+cluster-level majority annotations.
+
+These files are intentionally flat and human-readable to facilitate inspection and reuse outside R.
+
+Diagnostic plots
+
+The following plots are generated:
+
+UMAP colored by cluster,
+
+UMAP colored by predicted cell type,
+
+marker DotPlots by cluster,
+
+marker DotPlots by predicted cell type.
+
+These serve as qualitative validation of clustering coherence and marker specificity.
+
+Marker set design rationale (PBMC)
+
+The provided marker sets are curated from:
+
+canonical Seurat PBMC workflows,
+
+10x Genomics PBMC reference datasets,
+
+standard immunology literature.
+
+Design principles:
+
+avoid single-gene markers where possible,
+
+reduce overlap between NK and CD8 T cell signatures,
+
+prefer markers robustly detected in 3’ scRNA-seq data.
+
+Markers are intentionally conservative and interpretable rather than exhaustive.
+
+Reproducibility and design choices
+
+Key reproducibility decisions:
+
+deterministic UMAP via fixed seed,
+
+explicit marker definitions in version-controlled scripts,
+
+no implicit reuse of previous clustering state,
+
+no dependence on external reference atlases.
+
+This step prioritizes inspectability and stability over maximum annotation resolution, making it suitable for portfolio-grade and teaching-grade pipelines.
+

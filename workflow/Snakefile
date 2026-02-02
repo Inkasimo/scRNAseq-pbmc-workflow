@@ -148,6 +148,14 @@ rule all:
             trim_state=["trimmed"] if is_trimmed() else ["untrimmed"],
         ),
 
+                # Seurat clustering + annotation
+        expand(
+            "results/downstream/seurat/{trim_state}/{donor}/seurat_cluster_annot/seurat_cluster_annot.done",
+            donor=DONORS,
+            trim_state=["trimmed"] if is_trimmed() else ["untrimmed"],
+        ),
+
+
 
 
 
@@ -697,6 +705,45 @@ rule seurat_filt_normalize:
             --qc_metrics "$QC" \
             --outdir "{params.outdir}" \
             --donor "{wildcards.donor}"
+
+        tmp="{output.done}.tmp"
+        echo ok > "$tmp"
+        mv -f "$tmp" "{output.done}"
+        """
+
+rule seurat_cluster_annot:
+    input:
+        norm_done="results/downstream/seurat/{trim_state}/{donor}/seurat_filt_normalized/seurat_filt_normalize.done"
+    output:
+        done="results/downstream/seurat/{trim_state}/{donor}/seurat_cluster_annot/seurat_cluster_annot.done"
+    params:
+        # normalized object produced by qcfilt_normalize_seurat.R
+        seurat_rds=lambda wc: (
+            f"results/downstream/seurat/{wc.trim_state}/{wc.donor}/seurat_filt_normalized/"
+            f"{wc.donor}_qcfilt_norm_object.rds"
+        ),
+        markers="scripts/markers_pbmc.R",
+        outdir=lambda wc: f"results/downstream/seurat/{wc.trim_state}/{wc.donor}/seurat_cluster_annot",
+        # optional knobs (only include if you want config control now)
+        dims=lambda wc: int(config.get("seurat_annotation", {}).get("dims", 30)),
+        resolution=lambda wc: float(config.get("seurat_annotation", {}).get("resolution", 0.3)),
+        seed=lambda wc: int(config.get("seurat_annotation", {}).get("seed", 1)),
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p "{params.outdir}"
+
+        test -s "{params.seurat_rds}"
+        test -s "{params.markers}"
+
+        Rscript scripts/cell_clustering_and_annotation.R \
+            --seurat  "{params.seurat_rds}" \
+            --markers "{params.markers}" \
+            --outdir  "{params.outdir}" \
+            --donor   "{wildcards.donor}" \
+            --dims        {params.dims} \
+            --resolution  {params.resolution} \
+            --seed        {params.seed}
 
         tmp="{output.done}.tmp"
         echo ok > "$tmp"
