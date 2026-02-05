@@ -16,6 +16,9 @@ RUN apt-get update && apt-get install -y \
     vim-common \
     libglpk40 \
     libcurl4-openssl-dev libssl-dev libxml2-dev \
+	libpng-dev libjpeg-dev libtiff5-dev \
+    libfreetype6-dev libharfbuzz-dev libfribidi-dev \
+	pkg-config libfontconfig1-dev libcairo2-dev libglib2.0-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # STAR (build from source tag)
@@ -30,6 +33,8 @@ RUN mkdir -p /opt && \
 
 # Install renv globally
 RUN R -q -e "install.packages('renv', repos=Sys.getenv('RENV_CONFIG_REPOS_OVERRIDE'))"
+RUN R -q -e "install.packages('BiocManager', repos=Sys.getenv('RENV_CONFIG_REPOS_OVERRIDE'))"
+
 
 # Python tools
 RUN pip3 install --no-cache-dir snakemake==7.32.4 pulp==2.7.0 multiqc cutadapt==4.9
@@ -43,5 +48,5 @@ COPY renv/activate.R /work/renv/activate.R
 COPY .Rprofile /work/.Rprofile
 
 # Restore into /opt/renv/library
-RUN R -q -e "renv::restore(project='/work', lockfile='/work/renv.lock', prompt=FALSE, rebuild=TRUE)"
+RUN R -q -e 'renv::settings$bioconductor.version("3.18"); renv::restore(project="/work", lockfile="/work/renv.lock", prompt=FALSE, rebuild=TRUE)'
 CMD ["bash"]
