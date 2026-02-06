@@ -749,3 +749,50 @@ rule seurat_cluster_annot:
         echo ok > "$tmp"
         mv -f "$tmp" "{output.done}"
         """
+
+rule deg_and_tost:
+    input:
+        deg_and_tost_done="results/downstream/seurat/{trim_state}/{donor}/seurat_cluster_annot/seurat_cluster_annot.done"
+    output:
+        done="results/downstream/deg_and_tost/{trim_state}/deg_and_tost/deg_and_tost.done"
+    params:
+        seurat_rds=lambda wc: (
+            f"results/downstream/seurat/{wc.trim_state}/{wc.donor}/seurat_cluster_annot/"
+            f"{wc.donor}_annotated_object.rds"
+        ),
+        celltype_sets="scripts/celltype_sets.R",
+        outdir=lambda wc: f"results/downstream/deg_and_tost/{wc.trim_state}/deg_and_tost_results",
+        assay=lambda wc: str(config.get("deg_and_tost", {}).get("assay", "RNA")), 
+        min_baseMean=lambda wc: int(config.get("deg_and_tost", {}).get("min_baseMean", 10)),
+        min_cells_per_group=lambda wc: float(config.get("deg_and_tost", {}).get("min_cells_per_group", 50)),
+        marker_padj=lambda wc: float(config.get("deg_and_tost", {}).get("marker_padj", 1e-10)),
+        marker_lfc=lambda wc: float(config.get("deg_and_tost", {}).get("marker_lfc", 3)),
+        equiv_alpha=lambda wc: float(config.get("deg_and_tost", {}).get("equiv_alpha", 0.05)),
+        equiv_delta=lambda wc: float(config.get("deg_and_tost", {}).get("equiv_delta", 0.75)),
+        seed=lambda wc: int(config.get("deg_and_tost", {}).get("seed", 42)),
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p "{params.outdir}"
+
+        test -s "{params.seurat_rds}"
+        test -s "{params.celltype_sets}"
+
+        Rscript scripts\pseudobulk_deg_tost_gsea.R \
+            --seurat  "{params.seurat_rds}" \
+            --celltype_sets "{params.celltype_sets}" \
+            --outdir  "{params.outdir}" \
+            --assay       {params.assay} \
+            --min_baseMean  {params.min_baseMean} \
+            --seed        {params.seed} \
+            --min_cells_per_group        {params.min_cells_per_group} \
+            --marker_padj        {params.marker_padj} \
+            --marker_lfc        {params.marker_lfc} \
+            --equiv_alpha        {params.equiv_alpha} \
+            --equiv_delta        {params.equiv_delta} \
+
+
+        tmp="{output.done}.tmp"
+        echo ok > "$tmp"
+        mv -f "$tmp" "{output.done}"
+        """

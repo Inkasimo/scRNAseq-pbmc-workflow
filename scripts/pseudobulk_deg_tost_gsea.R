@@ -27,7 +27,7 @@ option_list <- list(
               help="Filter low-expression genes (DESeq2 baseMean) for TOST/DE (default 10)"),
   make_option("--min_cells_per_group", type="integer", default=50,
               help="Minimum cells required per donor x group to create pseudobulk (default 50)"),
-  make_option("--seed", type="integer", default=1),
+  make_option("--seed", type="integer", default=42),
   
   make_option("--marker_padj", type="double", default=1e-10,
               help="Very strict padj threshold for marker calls (default 1e-10)"),

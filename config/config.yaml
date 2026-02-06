@@ -45,3 +45,8 @@ seurat_annotation:
   dims: 30
   resolution: 0.3
   seed: 42
+
+deg_and_tost:
+  min_baseMean: 10
+  min_cells_per_group: 50
+  seed: 42
