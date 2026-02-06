@@ -188,6 +188,10 @@ run_analysis.py      # Optional Python wrapper for section-based execution
 - FASTQ downloading is controlled via `io.download_fastqs` in `config/config.yaml`  
   (automatically set by the wrapper for relevant sections)
 - STAR index requires ~25–30 GB RAM
+- Biological analyses are included to validate 
+  pipeline correctness and demonstrate statistically coherent downstream usage, 
+  not to claim novel biological findings.
+
 
 ## Citation
 
