@@ -10,7 +10,14 @@ option_list <- list(
   make_option("--seurat",     type = "character", help = "Path to base Seurat RDS (e.g., donorX_object.rds)"),
   make_option("--qc_metrics", type = "character", help = "Path to qc_metrics.tsv produced by base script"),
   make_option("--outdir",     type = "character", help = "Output directory (e.g., .../donorX/qcfilt_norm)"),
-  make_option("--donor",      type = "character", default = "donor")
+  make_option("--donor",      type = "character", default = "donor"),
+  make_option("--norm_method", type="character", default="LogNormalize"),
+  make_option("--scale_factor", type="integer", default=10000),
+  make_option("--hvg_method", type="character", default="vst"),
+  make_option("--hvg_nfeatures", type="integer", default=2000),
+  make_option("--vars_to_regress", type="character", default="percent.mt"),
+  make_option("--scale_features", type="character", default="hvg")
+
 )
 
 opt <- parse_args(OptionParser(option_list = option_list))
@@ -168,24 +175,29 @@ if ("percent.mt" %in% colnames(df) && !all(is.na(df$percent.mt))) {
 
 obj_filt <- NormalizeData(
   obj_filt,
-  normalization.method = "LogNormalize",
-  scale.factor = 10000,
+  normalization.method = opt$norm_method,
+  scale.factor = opt$scale_factor,
   verbose = FALSE
 )
-
 
 obj_filt <- FindVariableFeatures(
   obj_filt,
-  selection.method = "vst",
-  nfeatures = 2000,
+  selection.method = opt$hvg_method,
+  nfeatures = opt$hvg_nfeatures,
   verbose = FALSE
 )
 
-vars_to_regress <- c("percent.mt")  # optionally c("percent.mt", "nCount_RNA")
+vars_to_regress <- strsplit(opt$vars_to_regress, ",", fixed=TRUE)[[1]]
+vars_to_regress <- trimws(vars_to_regress)
+vars_to_regress <- vars_to_regress[nzchar(vars_to_regress)]
+ # optionally c("percent.mt", "nCount_RNA")
+
+
+scale_feats <- if (opt$scale_features == "all") rownames(obj_filt) else VariableFeatures(obj_filt)
 
 obj_filt <- ScaleData(
   obj_filt,
-  features = VariableFeatures(obj_filt),
+  features = scale_feats,
   vars.to.regress = vars_to_regress,
   verbose = FALSE
 )
@@ -223,8 +235,8 @@ norm_metrics <- data.frame(
   donor = opt$donor,
   n_cells = ncol(obj_filt),
   n_genes = nrow(obj_filt),
-  normalization_method = "LogNormalize",
-  scale_factor = 10000,
+  normalization_method = opt$norm_method,
+  scale_factor = opt$scale_factor,
   n_hvg = length(VariableFeatures(obj_filt)),
   vars_regressed = paste(vars_to_regress, collapse = ","),
   median_nCount_RNA = median(meta$nCount_RNA, na.rm=TRUE),

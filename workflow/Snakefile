@@ -104,6 +104,24 @@ def starsolo_done(donor, mode):
         #raise ValueError(f"No {read} FASTQs found with pattern: {pattern}")
     #return files
 
+def resolve_fastq_dir(donor):
+    base = config["pbmc"][donor].get("fastq_base", config["pbmc"][donor].get("fastq_dir"))
+    if base is None:
+        raise ValueError(f"{donor}: need pbmc.{donor}.fastq_base (or fastq_dir)")
+
+    # search base recursively for fastqs
+    r1 = sorted(glob.glob(os.path.join(base, "**", "*_R1_*.fastq.gz"), recursive=True))
+    r2 = sorted(glob.glob(os.path.join(base, "**", "*_R2_*.fastq.gz"), recursive=True))
+
+    if not r1 or not r2:
+        raise ValueError(f"{donor}: no R1/R2 fastqs found under {base}")
+
+    # choose the directory that contains the most R1 files (usually the right one)
+    from collections import Counter
+    r1_dirs = Counter(os.path.dirname(x) for x in r1)
+    fqdir = r1_dirs.most_common(1)[0][0]
+    return fqdir
+
 
 # ALL RULE
 
@@ -158,9 +176,10 @@ rule all:
 
         # Deg and TOST
         expand(
-           "results/downstream/deg_and_tost/{trim_state}/deg_and_tost/deg_and_tost.done",
+            "results/downstream/deg_and_tost/{trim_state}/deg_and_tost/deg_and_tost.done",
             trim_state=["trimmed"] if is_trimmed() else ["untrimmed"],
         ),
+
 
 
 
@@ -212,7 +231,7 @@ else:
         output:
             done="data/raw/{donor}/fastqs.done"
         params:
-            fqdir=lambda wc: config["pbmc"][wc.donor]["fastq_dir"]
+            fqdir=lambda wc: resolve_fastq_dir(wc.donor)
         shell:
             r"""
             set -euo pipefail
@@ -237,7 +256,7 @@ rule fastqc_raw:
         "results/logs/qc/fastqc_raw_{donor}.log"
     threads: FASTQC_THREADS
     params:
-        fqdir=lambda wc: config["pbmc"][wc.donor]["fastq_dir"]
+        fqdir=lambda wc: resolve_fastq_dir(wc.donor)
     shell:
         r"""
         set -euo pipefail
@@ -337,7 +356,7 @@ rule trim_fastqs:
     log:
         "results/logs/trim/cutadapt_{donor}.log"
     params:
-        fqdir=lambda wc: config["pbmc"][wc.donor]["fastq_dir"],
+        fqdir=lambda wc: resolve_fastq_dir(wc.donor),
         outdir=lambda wc: f"data/trimmed/{wc.donor}",
         adapter_r2=TRIM_R2_ADAPTER,
         q_r2=TRIM_R2_QUAL,
@@ -563,7 +582,7 @@ rule starsolo_raw:
         done="results/alignment/starsolo/raw/{donor}/starsolo.done"
     params:
         outdir="results/alignment/starsolo/raw/{donor}",
-        fqdir=lambda wc: config["pbmc"][wc.donor]["fastq_dir"],
+        fqdir=lambda wc: resolve_fastq_dir(wc.donor),
     shell:
         r"""
         set -euo pipefail
@@ -695,7 +714,14 @@ rule seurat_filt_normalize:
         done="results/downstream/seurat/{trim_state}/{donor}/seurat_filt_normalized/seurat_filt_normalize.done"
     params:
         seurat_dir=lambda wc: f"results/downstream/seurat/{wc.trim_state}/{wc.donor}/seurat_and_qc",
-        outdir=lambda wc: f"results/downstream/seurat/{wc.trim_state}/{wc.donor}/seurat_filt_normalized"
+        outdir=lambda wc: f"results/downstream/seurat/{wc.trim_state}/{wc.donor}/seurat_filt_normalized",
+        norm_method=lambda wc: str(config.get("seurat_normalization", {}).get("method", "LogNormalize")),
+        scale_factor=lambda wc: int(config.get("seurat_normalization", {}).get("scale_factor", 10000)),
+        hvg_method=lambda wc: str(config.get("seurat_normalization", {}).get("hvg_method", "vst")),
+        hvg_nfeatures=lambda wc: int(config.get("seurat_normalization", {}).get("hvg_nfeatures", 2000)),
+        vars_to_regress=lambda wc: ",".join(config.get("seurat_normalization", {}).get("vars_to_regress", ["percent.mt"])),
+        scale_features=lambda wc: str(config.get("seurat_normalization", {}).get("scale_features", "hvg")),
+
     shell:
         r"""
         set -euo pipefail
@@ -712,7 +738,14 @@ rule seurat_filt_normalize:
             --seurat "$SEURAT" \
             --qc_metrics "$QC" \
             --outdir "{params.outdir}" \
-            --donor "{wildcards.donor}"
+            --donor "{wildcards.donor}" \
+            --norm_method "{params.norm_method}" \
+            --scale_factor {params.scale_factor} \
+            --hvg_method "{params.hvg_method}" \
+            --hvg_nfeatures {params.hvg_nfeatures} \
+            --vars_to_regress "{params.vars_to_regress}" \
+            --scale_features "{params.scale_features}"
+
 
         tmp="{output.done}.tmp"
         echo ok > "$tmp"
@@ -775,9 +808,9 @@ rule deg_and_tost:
         ],
         celltype_sets="scripts/celltype_sets.R",
     output:
-        done="results/downstream/deg_and_tost/{trim_state}/deg_and_tost_results/deg_and_tost.done"
+        done="results/downstream/deg_and_tost/{trim_state}/deg_and_tost/deg_and_tost.done"
     params:
-        outdir=lambda wc: f"results/downstream/deg_and_tost/{wc.trim_state}/deg_and_tost_results",
+        outdir=lambda wc: f"results/downstream/deg_and_tost/{wc.trim_state}/deg_and_tost",
         assay=lambda wc: str(config.get("deg_and_tost", {}).get("assay", "RNA")),
         min_baseMean=lambda wc: int(config.get("deg_and_tost", {}).get("min_baseMean", 10)),
         min_cells_per_group=lambda wc: int(config.get("deg_and_tost", {}).get("min_cells_per_group", 50)),

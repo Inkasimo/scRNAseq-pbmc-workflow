@@ -102,22 +102,22 @@ SECTION_TARGETS = {
         "results/downstream/seurat/trimmed/{donor}/seurat_cluster_annot/seurat_cluster_annot.done",
     ],
     "deg_and_tost_untrimmed": [
-        "results/downstream/deg_and_tost/untrimmed/deg_and_tost_results/deg_and_tost.done",
+        "results/downstream/deg_and_tost/untrimmed/deg_and_tost/deg_and_tost.done",
     ],
     "deg_and_tost_trimmed": [
-        "results/downstream/deg_and_tost/trimmed/deg_and_tost_results/deg_and_tost.done",
+        "results/downstream/deg_and_tost/trimmed/deg_and_tost/deg_and_tost.done",
     ],
     "downstream_untrimmed": [
         "results/downstream/seurat/untrimmed/{donor}/seurat_and_qc/seurat_qc.done",
         "results/downstream/seurat/untrimmed/{donor}/seurat_filt_normalized/seurat_filt_normalize.done",
         "results/downstream/seurat/untrimmed/{donor}/seurat_cluster_annot/seurat_cluster_annot.done",
-        "results/downstream/deg_and_tost/untrimmed/deg_and_tost_results/deg_and_tost.done",
+        "results/downstream/deg_and_tost/untrimmed/deg_and_tost/deg_and_tost.done",
     ],
     "downstream_trimmed": [
         "results/downstream/seurat/trimmed/{donor}/seurat_and_qc/seurat_qc.done",
         "results/downstream/seurat/trimmed/{donor}/seurat_filt_normalized/seurat_filt_normalize.done",
         "results/downstream/seurat/trimmed/{donor}/seurat_cluster_annot/seurat_cluster_annot.done",
-        "results/downstream/deg_and_tost/trimmed/deg_and_tost_results/deg_and_tost.done",
+        "results/downstream/deg_and_tost/trimmed/deg_and_tost/deg_and_tost.done",
     ],
 
     "unlock": [],
