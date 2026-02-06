@@ -396,6 +396,7 @@ for (cc in deg_contrasts) {
   
   markers <- subset(res2, is_marker)
   marker_sets[[tag]] <- unique(strip_dup_suffix(markers$gene))
+  markers<-markers[order(as.numeric(markers$padj), decreasing=FALSE),]
   write.table(
     markers[, c("gene","log2FoldChange","lfcSE","stat","pvalue","padj","baseMean")],
     file = file.path(opt$outdir, "tables", paste0("markers_", tag, ".tsv")),
@@ -404,6 +405,7 @@ for (cc in deg_contrasts) {
   
   conserved <- subset(res2, is_conserved)
   conserved_sets[[tag]] <- unique(strip_dup_suffix(conserved$gene))
+  conserved<-conserved[order(as.numeric(conserved$padj_equiv), decreasing=FALSE),]
   write.table(
     conserved[, c("gene","log2FoldChange","lfcSE","p_equiv","padj_equiv","baseMean")],
     file = file.path(opt$outdir, "tables", paste0("conserved_", tag, ".tsv")),

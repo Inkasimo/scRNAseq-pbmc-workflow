@@ -61,5 +61,5 @@ deg_and_tost:
   seed: 42
   marker_padj: 1e-10
   marker_lfc: 3
-  equiv_alpha: 0.05
+  equiv_alpha: 0.01
   equiv_delta: 0.75
