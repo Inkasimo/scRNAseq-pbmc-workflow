@@ -20,4 +20,5 @@ scripts/clean_outputs.sh
 scripts/run_script.Rrenv/library/
 renv/staging/
 renv/local/
-
+withCallingHandlers
+library
