@@ -136,10 +136,11 @@ rule all:
 
                 # Seurat/QC downstream (only for the active mode)
         expand(
-            "results/downstream/seurat/{trim_state}/{donor}/seurat_qc.done",
+            "results/downstream/seurat/{trim_state}/{donor}/seurat_and_qc/seurat_qc.done",
             donor=DONORS,
             trim_state=["trimmed"] if is_trimmed() else ["untrimmed"],
         ),
+
 
                 # Seurat/filtering and normalization
         expand(
@@ -655,20 +656,21 @@ rule seurat_qc:
     input:
         starsolo_done=lambda wc: f"results/alignment/starsolo/{LEGACY_BRANCH[wc.trim_state]}/{wc.donor}/starsolo.done"
     output:
-        done="results/downstream/seurat/{trim_state}/{donor}/seurat_qc.done"
+        done="results/downstream/seurat/{trim_state}/{donor}/seurat_and_qc/seurat_qc.done"
         # (optional) only keep this if your R script truly writes it:
         # rds="results/downstream/seurat/{trim_state}/{donor}/seurat_object.rds"
     params:
         filtered_dir=lambda wc: f"results/alignment/starsolo/{LEGACY_BRANCH[wc.trim_state]}/{wc.donor}",
-        outdir=lambda wc: f"results/downstream/seurat/{wc.trim_state}/{wc.donor}"
+        outdir=lambda wc: f"results/downstream/seurat/{wc.trim_state}/{wc.donor}/seurat_and_qc"
     shell:
         r"""
         set -euo pipefail
         mkdir -p "{params.outdir}"
 
-        MTX="{params.filtered_dir}/matrix.mtx"
-        BARCODES="{params.filtered_dir}/barcodes.tsv"
-        FEATURES="{params.filtered_dir}/features.tsv"
+        MTX="{params.filtered_dir}/Solo.out/Gene/filtered/matrix.mtx"
+        BARCODES="{params.filtered_dir}/Solo.out/Gene/filtered/barcodes.tsv"
+        FEATURES="{params.filtered_dir}/Solo.out/Gene/filtered/features.tsv"
+
 
         test -s "$MTX"
         test -s "$BARCODES"
@@ -688,11 +690,11 @@ rule seurat_qc:
 
 rule seurat_filt_normalize:
     input:
-        seurat_done="results/downstream/seurat/{trim_state}/{donor}/seurat_qc.done"
+        seurat_done="results/downstream/seurat/{trim_state}/{donor}/seurat_and_qc/seurat_qc.done"
     output:
         done="results/downstream/seurat/{trim_state}/{donor}/seurat_filt_normalized/seurat_filt_normalize.done"
     params:
-        seurat_dir=lambda wc: f"results/downstream/seurat/{wc.trim_state}/{wc.donor}",
+        seurat_dir=lambda wc: f"results/downstream/seurat/{wc.trim_state}/{wc.donor}/seurat_and_qc",
         outdir=lambda wc: f"results/downstream/seurat/{wc.trim_state}/{wc.donor}/seurat_filt_normalized"
     shell:
         r"""

@@ -1,27 +1,5 @@
 #!/usr/bin/env Rscript
 
-# ADD HARD CAPS TO CONFIG
-
-#FILTER
-
-#mt_quantile (0.90)
-#mt_cap (25)
-#nFeature_min_quantile (0.05)
-#nFeature_max_quantile (0.99)
-#nFeature_cap (6000)
-#nCount_min_quantile (0.05)
-#nCount_max_quantile (0.99)
-#hb_max (1 or null/disable)
-
-#normalization
-
-#method ("LogNormalize")
-#scale_factor (10000)
-#n_hvg (2000)
-#selection.method = "vst"
-
-regress (["percent.mt"])
-# QC-filter Seurat object 
 suppressPackageStartupMessages({
   library(optparse)
   library(Seurat)
@@ -47,16 +25,9 @@ dir.create(plots_dir, recursive = TRUE, showWarnings = FALSE)
 # -------------------------
 # Load inputs
 # -------------------------
-#obj<-"G:/scRNAseq-pbmc-workflow-copy/scRNAseq-pbmc-workflow/results/downstream/seurat/untrimmed/donor1/donor1_object.rds"
-#obj<-readRDS(obj)
 
 obj <- readRDS(opt$seurat)
 
-#metrics<-"G:/scRNAseq-pbmc-workflow-copy/scRNAseq-pbmc-workflow/results/downstream/seurat/untrimmed/donor1/qc_metrics.tsv"
-#metrics <- read.table(metrics, header = TRUE, sep = "\t", stringsAsFactors = FALSE, check.names = FALSE)
-#if (nrow(metrics) != 1) {
-  #stop("qc_metrics.tsv must contain exactly one row for this donor.")
-#}
 
 metrics <- read.table(opt$qc_metrics, header = TRUE, sep = "\t", stringsAsFactors = FALSE, check.names = FALSE)
 if (nrow(metrics) != 1) {
@@ -114,7 +85,6 @@ get1 <- function(col) {
 }
 
 thr <- data.frame(
-  #donor="donor1",
   donor = opt$donor,
   mt_max = min(get1("mt_q90"), 25),
   nFeature_min = get1("nFeature_q05"),
@@ -143,7 +113,6 @@ fail_hb <- if (!all(is.na(md$percent.hb))) (md$percent.hb > thr$hb_max[1]) else 
 fail_any <- fail_mt | fail_nf_low | fail_nf_high | fail_nc_low | fail_nc_high | fail_hb
 
 summary_tbl <- data.frame(
-  #donor="donor1",
   donor = opt$donor,
   n_before = n_before,
   n_after = sum(!fail_any),
@@ -192,9 +161,6 @@ if ("percent.mt" %in% colnames(df) && !all(is.na(df$percent.mt))) {
   p_hist3 <- ggplot(df, aes(percent.mt)) + geom_histogram(bins = 60)
   ggsave(file.path(plots_dir, "hist_mt_RNA.png"), plot = p_hist3, width = 5, height = 4, dpi = 300)
 }
-
-# marker file
-#file.create(file.path(opt$outdir, "seurat_qcfilt.done"))
 
 
 ####Normalization. Apply first lognormalize plus findvariable features vst. 

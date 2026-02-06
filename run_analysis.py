@@ -77,21 +77,21 @@ SECTION_TARGETS = {
     ],
 
     "build_seurat_object_qc_untrimmed": [
-        "results/downstream/seurat/untrimmed/{donor}/seurat_qc.done",
+        "results/downstream/seurat/untrimmed/{donor}/seurat_and_qc/seurat_qc.done",
     ],
     "build_seurat_object_qc_trimmed": [
         "data/trimmed/{donor}/trim.done",
-        "results/downstream/seurat/trimmed/{donor}/seurat_qc.done",
+        "results/downstream/seurat/trimmed/{donor}/seurat_and_qc/seurat_qc.done",
     ],
 
 
     "filter_and_normalize_seurat_untrimmed":[
-        "results/downstream/seurat/untrimmed/{donor}/seurat_qc.done",
+        "results/downstream/seurat/untrimmed/{donor}/seurat_and_qc/seurat_qc.done",
         "results/downstream/seurat/untrimmed/{donor}/seurat_filt_normalized/seurat_filt_normalize.done",
     ],
 
     "filter_and_normalize_seurat_trimmed":[
-        "results/downstream/seurat/trimmed/{donor}/seurat_qc.done",
+        "results/downstream/seurat/trimmed/{donor}/seurat_and_qc/seurat_qc.done",
         "results/downstream/seurat/trimmed/{donor}/seurat_filt_normalized/seurat_filt_normalize.done",
     ],
 
@@ -108,13 +108,13 @@ SECTION_TARGETS = {
         "results/downstream/deg_and_tost/trimmed/deg_and_tost_results/deg_and_tost.done",
     ],
     "downstream_untrimmed": [
-        "results/downstream/seurat/untrimmed/{donor}/seurat_qc.done",
+        "results/downstream/seurat/untrimmed/{donor}/seurat_and_qc/seurat_qc.done",
         "results/downstream/seurat/untrimmed/{donor}/seurat_filt_normalized/seurat_filt_normalize.done",
         "results/downstream/seurat/untrimmed/{donor}/seurat_cluster_annot/seurat_cluster_annot.done",
         "results/downstream/deg_and_tost/untrimmed/deg_and_tost_results/deg_and_tost.done",
     ],
     "downstream_trimmed": [
-        "results/downstream/seurat/trimmed/{donor}/seurat_qc.done",
+        "results/downstream/seurat/trimmed/{donor}/seurat_and_qc/seurat_qc.done",
         "results/downstream/seurat/trimmed/{donor}/seurat_filt_normalized/seurat_filt_normalize.done",
         "results/downstream/seurat/trimmed/{donor}/seurat_cluster_annot/seurat_cluster_annot.done",
         "results/downstream/deg_and_tost/trimmed/deg_and_tost_results/deg_and_tost.done",

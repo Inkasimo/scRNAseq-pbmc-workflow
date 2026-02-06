@@ -30,15 +30,10 @@ dir.create(plots_dir, recursive = TRUE, showWarnings = FALSE)
 # -------------------------
 # Load inputs
 # -------------------------
-#obj<-"G:/scRNAseq-pbmc-workflow-copy/scRNAseq-pbmc-workflow/results/downstream/seurat/untrimmed/donor1/seurat_filt_normalized/donor1_qcfilt_norm_object.rds"
-#obj<-readRDS(obj)
+
 obj <- readRDS(opt$seurat)
 
 # Load marker sets
-#source("G:/scRNAseq-pbmc-workflow-copy/scRNAseq-pbmc-workflow/scripts/markers_pbmc.R")
-# now markers_pbmc exists in the environment (defined by the file)
-#str(markers_pbmc)
-
 source(opt$markers)  # expected to define `markers_pbmc`
 if (!exists("markers_pbmc")) stop("markers script must define object `markers_pbmc` (a named list of character vectors).")
 if (!is.list(markers_pbmc) || is.null(names(markers_pbmc))) stop("`markers_pbmc` must be a *named* list.")
@@ -59,10 +54,7 @@ if (!"pca" %in% names(obj@reductions)) {
   obj <- RunPCA(obj, features = VariableFeatures(obj), verbose = FALSE)
 }
 
-#dims=30
-#resolution=0.3
-#obj <- FindNeighbors(obj, dims = 1:dims, verbose = FALSE)
-#obj <- FindClusters(obj, resolution = resolution, verbose = FALSE)
+
 obj <- FindNeighbors(obj, dims = 1:opt$dims, verbose = FALSE)
 obj <- FindClusters(obj, resolution = opt$resolution, verbose = FALSE)
 
@@ -147,7 +139,7 @@ write.table(
 cluster_ct_long <- as.data.frame(cluster_ct_tbl, stringsAsFactors = FALSE)
 colnames(cluster_ct_long) <- c("cluster", "cell_type", "n_cells")
 cluster_ct_long$donor <- opt$donor
-#cluster_ct_long$donor <- "donor1"
+
 
 write.table(
   cluster_ct_long,
@@ -157,7 +149,6 @@ write.table(
 
 # Majority label per cluster
 cluster_majority_df <- data.frame(
-  #donor="donor1",
   donor = opt$donor,
   cluster = names(majority_ct),
   majority_cell_type = unname(majority_ct),
@@ -176,16 +167,12 @@ write.table(
 p_umap_cluster <- DimPlot(obj, reduction = "umap", group.by = "seurat_clusters", label = TRUE) +
   ggtitle(paste0(opt$donor, " - UMAP by cluster"))
 
-#p_umap_cluster <- DimPlot(obj, reduction = "umap", group.by = "seurat_clusters", label = TRUE) +
-  #ggtitle(paste0("donor1", " - UMAP by cluster"))
 
 ggsave(file.path(plots_dir, "umap_by_cluster.png"), p_umap_cluster, width = 6, height = 5, dpi = 300)
 
 p_umap_ct <- DimPlot(obj, reduction = "umap", group.by = "cell_type_pred", label = TRUE) +
   ggtitle(paste0(opt$donor, " - UMAP by predicted cell type"))
 
-#p_umap_ct <- DimPlot(obj, reduction = "umap", group.by = "cell_type_pred", label = TRUE) +
-  #ggtitle(paste0("donor1", " - UMAP by predicted cell type"))
 
 ggsave(file.path(plots_dir, "umap_by_cell_type_pred.png"), p_umap_ct, width = 6, height = 5, dpi = 300)
 
@@ -195,8 +182,6 @@ marker_vec <- unique(unlist(markers_pbmc))
 p_dot <- DotPlot(obj, features = marker_vec, group.by = "seurat_clusters") + RotatedAxis() +
   ggtitle(paste0(opt$donor, " - Marker DotPlot by cluster"))
 
-#p_dot <- DotPlot(obj, features = marker_vec, group.by = "seurat_clusters") + RotatedAxis() +
-  #ggtitle(paste0("donor1", " - Marker DotPlot by cluster"))
 
 ggsave(file.path(plots_dir, "dotplot_markers_by_cluster.png"), p_dot, width = 10, height = 6, dpi = 300)
 
@@ -204,8 +189,6 @@ ggsave(file.path(plots_dir, "dotplot_markers_by_cluster.png"), p_dot, width = 10
 p_dot_ct <- DotPlot(obj, features = marker_vec, group.by = "cell_type_pred") + RotatedAxis() +
   ggtitle(paste0(opt$donor, " - Marker DotPlot by predicted cell type"))
 
-#p_dot_ct <- DotPlot(obj, features = marker_vec, group.by = "cell_type_pred") + RotatedAxis() +
-  #ggtitle(paste0("donor1", " - Marker DotPlot by predicted cell type"))
 
 
 ggsave(file.path(plots_dir, "dotplot_markers_by_cell_type_pred.png"), p_dot_ct, width = 10, height = 6, dpi = 300)
@@ -215,5 +198,3 @@ ggsave(file.path(plots_dir, "dotplot_markers_by_cell_type_pred.png"), p_dot_ct, 
 # -------------------------
 saveRDS(obj, file.path(opt$outdir, paste0(opt$donor, "_annotated_object.rds")))
 
-# Marker file for Snakemake
-#file.create(file.path(opt$outdir, "seurat_annot.done"))

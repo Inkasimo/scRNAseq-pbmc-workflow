@@ -72,6 +72,9 @@ if (!exists("deg_contrasts")) stop("celltype_sets.R must define deg_contrasts")
 # -------------------------
 # Load donors, build per-cell group labels (T_like/B_like/Mono_like)
 # -------------------------
+
+strip_dup_suffix <- function(x) sub("\\.\\d+$", "", x)
+
 objs <- list()
 donors <- character()
 
@@ -157,9 +160,6 @@ if (length(pb_counts_list) < 4) stop("Too few pseudobulk samples created; check 
 pb_counts <- do.call(cbind, pb_counts_list)
 colnames(pb_counts) <- names(pb_counts_list)
 
-# Keep only symbols for this
-pb_counts <- pb_counts[!grepl("^ENSG", rownames(pb_counts)), , drop = FALSE]
-
 write.table(pb_coldata,
             file=file.path(opt$outdir, "tables", "pseudobulk_samples.tsv"),
             sep="\t", row.names=FALSE, quote=FALSE)
@@ -172,46 +172,51 @@ run_deseq2_contrast <- function(pb_counts, coldata, g1, g2) {
   sub <- coldata[coldata$group %in% c(g1, g2), , drop=FALSE]
   sub$group <- droplevels(factor(sub$group, levels=c(g1, g2)))
   sub$donor <- factor(sub$donor)
-  
+
   donors_ok <- names(which(tapply(sub$group, sub$donor, function(x) all(c(g1,g2) %in% x))))
   sub <- sub[sub$donor %in% donors_ok, , drop=FALSE]
   sub$donor <- droplevels(sub$donor)
-  
+
   if (nrow(sub) < 4) stop(sprintf("Not enough samples for contrast %s vs %s after donor pairing.", g1, g2))
-  
+
   m <- pb_counts[, sub$sample, drop=FALSE]
-  
+
   keep <- rowSums(m) >= 5
   m <- m[keep, , drop = FALSE]
-  
-  # handle duplicate gene symbols WITHOUT make.unique(): aggregate duplicates by summing counts
+
   m_mat <- as.matrix(m)
   if (anyDuplicated(rownames(m_mat)) > 0) {
     m_mat <- rowsum(m_mat, group = rownames(m_mat), reorder = FALSE)
   }
-  
+
   keep_samples <- colSums(m_mat) > 0
   m_mat <- m_mat[, keep_samples, drop = FALSE]
   sub <- sub[keep_samples, , drop = FALSE]
-  
-  # DESeq2 requires integer counts; pseudobulk sums should be integer already.
+
   storage.mode(m_mat) <- "integer"
-  
+
   dds <- DESeqDataSetFromMatrix(
     countData = m_mat,
     colData = sub,
     design = ~ donor + group
   )
-  
+
   dds <- DESeq(dds, sfType = "poscounts", quiet = TRUE)
-  
-  res <- results(dds, contrast=c("group", g1, g2))  # g1 - g2
+
+  res <- results(dds, contrast=c("group", g1, g2))
   res <- as.data.frame(res)
   res$gene <- rownames(res)
-  
   res <- res[order(res$padj, res$pvalue), ]
-  list(dds=dds, res=res, sub=sub)
+  
+  list(
+  dds = dds,
+  res = res,
+  sub = sub,
+  universe = rownames(m_mat)
+)
+
 }
+
 
 # -------------------------
 # TOST equivalence test on log2FC using DESeq2 SE
@@ -262,11 +267,11 @@ load_pathways_hallmark <- function() {
   pw[, c("gs_name", "gene_symbol")]
 }
 
-run_gsea_fgsea <- function(ranks, pathways_df, out_tsv, out_png, top_n = 25, nperm = 10000) {
+run_gsea_fgsea <- function(ranks, pathways_df, out_tsv, out_png, top_n = 25) {
   require_pkg("fgsea")
   pw <- split(pathways_df$gene_symbol, pathways_df$gs_name)
   
-  res <- fgsea::fgsea(pathways = pw, stats = ranks, nperm = nperm)
+  res <- fgsea::fgsea(pathways = pw, stats = ranks, eps=0)
   res <- as.data.frame(res)
   res <- res[order(res$padj, res$pval), , drop = FALSE]
   
@@ -296,23 +301,30 @@ run_gsea_fgsea <- function(ranks, pathways_df, out_tsv, out_png, top_n = 25, npe
 }
 
 
-run_ora_enricher <- function(genes, pathways_df, out_tsv, out_png, top_n = 25) {
+run_ora_enricher <- function(genes, universe, pathways_df, out_tsv, out_png, top_n = 25) {
   require_pkg("clusterProfiler")
   term2gene <- unique(pathways_df[, c("gs_name", "gene_symbol")])
   colnames(term2gene) <- c("term", "gene")
-  
+
   genes <- unique(genes)
   genes <- genes[!is.na(genes) & nzchar(genes)]
+
+  universe <- unique(universe)
+  universe <- universe[!is.na(universe) & nzchar(universe)]
+
+  # make sure query genes are subset of universe (prevents clusterProfiler warnings / empty)
+  genes <- intersect(genes, universe)
+
   if (length(genes) < 5) {
     write.table(data.frame(), out_tsv, sep = "\t", row.names = FALSE, quote = FALSE)
     return(invisible(NULL))
   }
-  
-  enr <- clusterProfiler::enricher(genes, TERM2GENE = term2gene)
+
+  enr <- clusterProfiler::enricher(genes, universe = universe, TERM2GENE = term2gene)
   df <- as.data.frame(enr)
   df <- df[order(df$p.adjust, df$pvalue), , drop = FALSE]
   write.table(df, out_tsv, sep = "\t", row.names = FALSE, quote = FALSE)
-  
+
   d2 <- df[!is.na(df$p.adjust), , drop = FALSE]
   d2 <- head(d2, top_n)
   if (nrow(d2) > 0) {
@@ -322,9 +334,10 @@ run_ora_enricher <- function(genes, pathways_df, out_tsv, out_png, top_n = 25) {
       labs(title = "ORA (enricher) Hallmark", x = "Gene count", y = "Pathway")
     ggsave(out_png, p, width = 8, height = 6, dpi = 300)
   }
-  
+
   invisible(df)
 }
+
 
 pathways_h <- load_pathways_hallmark()
 
@@ -334,6 +347,7 @@ pathways_h <- load_pathways_hallmark()
 all_results <- list()
 marker_sets <- list()
 conserved_sets <- list()
+universe_sets <- list()
 
 for (cc in deg_contrasts) {
   g1 <- cc[[1]]
@@ -344,7 +358,9 @@ for (cc in deg_contrasts) {
   fit <- run_deseq2_contrast(pb_counts, pb_coldata, g1, g2)
   
   res <- fit$res
-  
+
+  universe_sets[[tag]] <- strip_dup_suffix(fit$universe)
+
   # -------------------------
   # STRICT MARKER CALLS (use opt thresholds)
   # -------------------------
@@ -379,7 +395,7 @@ for (cc in deg_contrasts) {
   )
   
   markers <- subset(res2, is_marker)
-  marker_sets[[tag]] <- unique(markers$gene)
+  marker_sets[[tag]] <- unique(strip_dup_suffix(markers$gene))
   write.table(
     markers[, c("gene","log2FoldChange","lfcSE","stat","pvalue","padj","baseMean")],
     file = file.path(opt$outdir, "tables", paste0("markers_", tag, ".tsv")),
@@ -387,7 +403,7 @@ for (cc in deg_contrasts) {
   )
   
   conserved <- subset(res2, is_conserved)
-  conserved_sets[[tag]] <- unique(conserved$gene)
+  conserved_sets[[tag]] <- unique(strip_dup_suffix(conserved$gene))
   write.table(
     conserved[, c("gene","log2FoldChange","lfcSE","p_equiv","padj_equiv","baseMean")],
     file = file.path(opt$outdir, "tables", paste0("conserved_", tag, ".tsv")),
@@ -400,7 +416,7 @@ for (cc in deg_contrasts) {
   
   rnk_df <- res2[!is.na(res2$log2FoldChange) & !is.na(res2$gene), c("gene", "log2FoldChange")]
   # if rowsum collapsed duplicates upstream, this is already clean; keep robust anyway
-  rnk_df$gene <- sub("\\..*$", "", rnk_df$gene)
+  rnk_df$gene <- strip_dup_suffix(rnk_df$gene)
   rnk <- tapply(rnk_df$log2FoldChange, rnk_df$gene, function(x) x[1])
   rnk <- sort(rnk, decreasing = TRUE)
   
@@ -413,18 +429,31 @@ for (cc in deg_contrasts) {
   
 
   run_ora_enricher(
-    genes = sub("\\..*$", "", markers$gene),
-    pathways_df = pathways_h,
-    out_tsv = file.path(opt$outdir, "tables", paste0("ora_markers_", tag, ".tsv")),
-    out_png = file.path(opt$outdir, "plots", paste0("ora_markers_", tag, "_bubble.png"))
+  genes = strip_dup_suffix(markers$gene),
+  universe = strip_dup_suffix(fit$universe),
+  pathways_df = pathways_h,
+  out_tsv = file.path(opt$outdir, "tables", paste0("ora_markers_", tag, ".tsv")),
+  out_png = file.path(opt$outdir, "plots", paste0("ora_markers_", tag, "_bubble.png"))
+)
+
+
+run_ora_enricher(
+  genes     = strip_dup_suffix(conserved$gene),
+  universe  = strip_dup_suffix(fit$universe),
+  pathways_df = pathways_h,
+  out_tsv   = file.path(
+    opt$outdir,
+    "tables",
+    paste0("ora_conserved_", tag, ".tsv")
+  ),
+  out_png  = file.path(
+    opt$outdir,
+    "plots",
+    paste0("ora_conserved_", tag, "_bubble.png")
   )
-  
-  run_ora_enricher(
-    genes = sub("\\..*$", "", conserved$gene),
-    pathways_df = pathways_h,
-    out_tsv = file.path(opt$outdir, "tables", paste0("ora_conserved_", tag, ".tsv")),
-    out_png = file.path(opt$outdir, "plots", paste0("ora_conserved_", tag, "_bubble.png"))
-  )
+)
+
+
   
   # -------------------------
   # VOLCANO
@@ -507,6 +536,21 @@ write.table(
 conserved_all <- Reduce(intersect, conserved_sets)
 markers_any <- Reduce(union, marker_sets)
 markers_all <- Reduce(intersect, marker_sets)
+universe_all <- Reduce(intersect, lapply(universe_sets, unique))
+universe_all <- universe_all[!is.na(universe_all) & nzchar(universe_all)]
+
+
+# -------------------------
+# Cross-contrast ANY universes (for union gene sets)
+# -------------------------
+universe_any <- Reduce(union, lapply(universe_sets, unique))
+universe_any <- universe_any[!is.na(universe_any) & nzchar(universe_any)]
+
+# optional: also do conserved_any if you want it
+conserved_any <- Reduce(union, conserved_sets)
+# conserved_any already stripped above; if not, do strip_dup_suffix(conserved_any)
+
+
 
 markers_unique <- lapply(names(marker_sets), function(nm) {
   setdiff(marker_sets[[nm]], Reduce(union, marker_sets[names(marker_sets) != nm]))
@@ -523,17 +567,40 @@ overlap_marker_conserved <- intersect(
 # -------------------------
 
 run_ora_enricher(
-  genes = sub("\\..*$", "", markers_all),
+  genes = strip_dup_suffix(markers_all),
+  universe = universe_all,
   pathways_df = pathways_h,
   out_tsv = file.path(opt$outdir, "tables", "ora_markers_all_contrasts.tsv"),
   out_png = file.path(opt$outdir, "plots", "ora_markers_all_contrasts_bubble.png")
 )
 
 run_ora_enricher(
-  genes = sub("\\..*$", "", conserved_all),
+  genes = strip_dup_suffix(conserved_all),
+  universe = universe_all,
   pathways_df = pathways_h,
   out_tsv = file.path(opt$outdir, "tables", "ora_conserved_all_contrasts.tsv"),
   out_png = file.path(opt$outdir, "plots", "ora_conserved_all_contrasts_bubble.png")
+)
+
+
+# -------------------------
+# ORA on cross-contrast ANY gene sets (union sets)
+# -------------------------
+run_ora_enricher(
+  genes = strip_dup_suffix(markers_any),
+  universe = universe_any,
+  pathways_df = pathways_h,
+  out_tsv = file.path(opt$outdir, "tables", "ora_markers_any_contrast.tsv"),
+  out_png = file.path(opt$outdir, "plots", "ora_markers_any_contrast_bubble.png")
+)
+
+# OPTIONAL (only if you want conserved_any ORA)
+run_ora_enricher(
+  genes = strip_dup_suffix(conserved_any),
+  universe = universe_any,
+  pathways_df = pathways_h,
+  out_tsv = file.path(opt$outdir, "tables", "ora_conserved_any_contrast.tsv"),
+  out_png = file.path(opt$outdir, "plots", "ora_conserved_any_contrast_bubble.png")
 )
 
 
