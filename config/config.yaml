@@ -47,6 +47,11 @@ seurat_annotation:
   seed: 42
 
 deg_and_tost:
+  assay: "RNA"
   min_baseMean: 10
   min_cells_per_group: 50
   seed: 42
+  marker_padj: 1e-10
+  marker_lfc: 3
+  equiv_alpha: 0.05
+  equiv_delta: 0.75

@@ -101,17 +101,23 @@ SECTION_TARGETS = {
     "cluster_annotate_seurat_trimmed": [
         "results/downstream/seurat/trimmed/{donor}/seurat_cluster_annot/seurat_cluster_annot.done",
     ],
-
-
+    "deg_and_tost_untrimmed": [
+        "results/downstream/deg_and_tost/untrimmed/deg_and_tost_results/deg_and_tost.done",
+    ],
+    "deg_and_tost_trimmed": [
+        "results/downstream/deg_and_tost/trimmed/deg_and_tost_results/deg_and_tost.done",
+    ],
     "downstream_untrimmed": [
         "results/downstream/seurat/untrimmed/{donor}/seurat_qc.done",
         "results/downstream/seurat/untrimmed/{donor}/seurat_filt_normalized/seurat_filt_normalize.done",
         "results/downstream/seurat/untrimmed/{donor}/seurat_cluster_annot/seurat_cluster_annot.done",
+        "results/downstream/deg_and_tost/untrimmed/deg_and_tost_results/deg_and_tost.done",
     ],
     "downstream_trimmed": [
         "results/downstream/seurat/trimmed/{donor}/seurat_qc.done",
         "results/downstream/seurat/trimmed/{donor}/seurat_filt_normalized/seurat_filt_normalize.done",
         "results/downstream/seurat/trimmed/{donor}/seurat_cluster_annot/seurat_cluster_annot.done",
+        "results/downstream/deg_and_tost/trimmed/deg_and_tost_results/deg_and_tost.done",
     ],
 
     "unlock": [],
@@ -212,6 +218,10 @@ def main() -> int:
     sp_cluster_annot.add_argument("--donor", action="append")
     add_common(sp_cluster_annot)
 
+    sp_cluster_annot = sub.add_parser("deg_and_tost")
+    sp_cluster_annot.add_argument("--trimmed", action="store_true")
+    sp_cluster_annot.add_argument("--donor", action="append")
+    add_common(sp_cluster_annot)
 
     sp_downstream = sub.add_parser("downstream")
     sp_downstream.add_argument("--trimmed", action="store_true")
@@ -240,6 +250,7 @@ def main() -> int:
             "build_seurat_object_qc",
             "filter_and_normalize_seurat",
             "cluster_annotate_seurat",
+            "deg_and_tost",
             "downstream",
             "unlock",
         ]:
@@ -346,7 +357,18 @@ def main() -> int:
             else:
                 targets.append(t)
 
+    elif args.section == "deg_and_tost":
+        key = "deg_and_tost_trimmed" if getattr(args, "trimmed", False) else "deg_and_tost_untrimmed"
 
+        selected = donors
+        if getattr(args, "donor", None):
+            selected = donors if args.donor == ["all"] else args.donor
+
+        for t in SECTION_TARGETS[key]:
+            if "{donor}" in t:
+                targets.extend(t.format(donor=d) for d in selected)
+            else:
+                targets.append(t)
 
     
     elif args.section == "downstream":

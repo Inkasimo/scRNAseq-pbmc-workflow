@@ -630,3 +630,81 @@ no dependence on external reference atlases.
 
 This step prioritizes inspectability and stability over maximum annotation resolution, making it suitable for portfolio-grade and teaching-grade pipelines.
 
+# DEG AND TOST
+
+This script runs pseudobulk differential expression and equivalence testing (TOST) across coarse immune groups (e.g., T-like/B-like/Mono-like) using multiple donors as biological replicates.
+
+Inputs are per-donor annotated Seurat objects. Cells are mapped from fine labels (e.g., Seurat metadata celltype labels) into a small set of coarse “DE groups” defined in celltype_sets.R. For each donor and group, the script creates a pseudobulk sample by summing raw UMI counts across cells, then uses DESeq2 to compare groups while blocking on donor.
+
+Outputs are gene-level DE tables, equivalence (conserved) calls, marker lists, plus pathway enrichment results (GSEA and ORA) and basic diagnostic plots.
+
+Core analysis choices and why
+1) Pseudobulk instead of cell-level DE
+
+How: for each donor × group, sum raw counts across all cells in that group.
+
+Why: donor is the experimental unit; pseudobulk avoids “treating cells as replicates” and makes the DE model reflect donor-to-donor variability.
+
+2) Donor-blocked DESeq2 model
+
+Model: ~ donor + group
+
+Why: controls for donor-specific baseline effects (library composition, inter-individual expression differences) while testing the group effect.
+
+3) Donor pairing for each contrast
+
+For each group contrast, donors are kept only if they have both groups present after filtering.
+
+Why: ensures the donor blocking term is meaningful and avoids unbalanced contrasts driven by missing donor-group combinations.
+
+4) Minimum cell threshold per donor × group
+
+Pseudobulk samples are only created if a donor has enough cells in that group (default 50).
+
+Why: prevents tiny pseudobulks that are dominated by sampling noise.
+
+5) Handling STAR “ENSG…” rows
+
+The script drops rows whose feature name starts with ENSG.
+
+Correct rationale: STAR/STARsolo can output a matrix that contains mostly gene symbols, but also includes symbol-less genes represented only by Ensembl IDs (ENSG…). Those rows won’t match symbol-based gene sets and can complicate interpretation, so they’re excluded to keep downstream enrichment consistent.
+
+(If you later want to keep them, the right fix is mapping ENSG → symbol before enrichment, not just retaining them.)
+
+6) Two complementary gene concepts: “markers” and “conserved”
+
+Markers: very strict DE genes (strong effect size + extremely significant adjusted p-value).
+
+Why: produces high-confidence, easily interpretable “signature” genes.
+
+Conserved: genes supported as equivalent (practically unchanged) using TOST.
+
+Why: “not significant” ≠ “same”; TOST explicitly tests for similarity within a margin.
+
+Equivalence testing (TOST) in one paragraph
+
+After DESeq2, the script uses the DESeq2 log2FC estimate and its standard error to run a two one-sided test (TOST): it asks whether the true log2FC is likely to lie within ±delta (default 0.75). Genes passing BH-adjusted equivalence p-value and also having |log2FC| < delta are called equivalent/conserved. Low-expression genes are filtered out using baseMean to avoid unstable calls.
+
+Pathway interpretation
+
+The script uses MSigDB Hallmark gene sets:
+
+GSEA (fgsea): uses the full ranked gene list (ranked by log2FC) to detect coordinated pathway shifts.
+
+ORA (clusterProfiler enricher): tests enrichment in discrete gene lists:
+
+strict markers
+
+conserved genes
+
+cross-contrast intersections (shared markers, shared conserved)
+
+Why both: GSEA captures subtle coordinated changes; ORA summarizes high-confidence gene sets.
+
+Practical notes / assumptions
+
+Results depend heavily on how you define coarse groups and contrasts in celltype_sets.R.
+
+Donors lacking enough cells in a group are excluded from that group/contrast.
+
+Symbol-only pathway enrichment is the default assumption (hence dropping symbol-less ENSG rows unless mapped).

@@ -155,6 +155,12 @@ rule all:
             trim_state=["trimmed"] if is_trimmed() else ["untrimmed"],
         ),
 
+        # Deg and TOST
+        expand(
+           "results/downstream/deg_and_tost/{trim_state}/deg_and_tost/deg_and_tost.done",
+            trim_state=["trimmed"] if is_trimmed() else ["untrimmed"],
+        ),
+
 
 
 
@@ -711,11 +717,13 @@ rule seurat_filt_normalize:
         mv -f "$tmp" "{output.done}"
         """
 
+
 rule seurat_cluster_annot:
     input:
         norm_done="results/downstream/seurat/{trim_state}/{donor}/seurat_filt_normalized/seurat_filt_normalize.done"
     output:
-        done="results/downstream/seurat/{trim_state}/{donor}/seurat_cluster_annot/seurat_cluster_annot.done"
+        done="results/downstream/seurat/{trim_state}/{donor}/seurat_cluster_annot/seurat_cluster_annot.done",
+        rds="results/downstream/seurat/{trim_state}/{donor}/seurat_cluster_annot/{donor}_annotated_object.rds"
     params:
         # normalized object produced by qcfilt_normalize_seurat.R
         seurat_rds=lambda wc: (
@@ -744,6 +752,9 @@ rule seurat_cluster_annot:
             --dims        {params.dims} \
             --resolution  {params.resolution} \
             --seed        {params.seed}
+        
+        # verify the declared output exists BEFORE declaring done
+        test -s "{output.rds}"
 
         tmp="{output.done}.tmp"
         echo ok > "$tmp"
@@ -752,19 +763,22 @@ rule seurat_cluster_annot:
 
 rule deg_and_tost:
     input:
-        deg_and_tost_done="results/downstream/seurat/{trim_state}/{donor}/seurat_cluster_annot/seurat_cluster_annot.done"
-    output:
-        done="results/downstream/deg_and_tost/{trim_state}/deg_and_tost/deg_and_tost.done"
-    params:
-        seurat_rds=lambda wc: (
-            f"results/downstream/seurat/{wc.trim_state}/{wc.donor}/seurat_cluster_annot/"
-            f"{wc.donor}_annotated_object.rds"
-        ),
+        annot_done=lambda wc: [
+            f"results/downstream/seurat/{wc.trim_state}/{d}/seurat_cluster_annot/seurat_cluster_annot.done"
+            for d in DONORS
+        ],
+        seurat_rds=lambda wc: [
+            f"results/downstream/seurat/{wc.trim_state}/{d}/seurat_cluster_annot/{d}_annotated_object.rds"
+            for d in DONORS
+        ],
         celltype_sets="scripts/celltype_sets.R",
+    output:
+        done="results/downstream/deg_and_tost/{trim_state}/deg_and_tost_results/deg_and_tost.done"
+    params:
         outdir=lambda wc: f"results/downstream/deg_and_tost/{wc.trim_state}/deg_and_tost_results",
-        assay=lambda wc: str(config.get("deg_and_tost", {}).get("assay", "RNA")), 
+        assay=lambda wc: str(config.get("deg_and_tost", {}).get("assay", "RNA")),
         min_baseMean=lambda wc: int(config.get("deg_and_tost", {}).get("min_baseMean", 10)),
-        min_cells_per_group=lambda wc: float(config.get("deg_and_tost", {}).get("min_cells_per_group", 50)),
+        min_cells_per_group=lambda wc: int(config.get("deg_and_tost", {}).get("min_cells_per_group", 50)),
         marker_padj=lambda wc: float(config.get("deg_and_tost", {}).get("marker_padj", 1e-10)),
         marker_lfc=lambda wc: float(config.get("deg_and_tost", {}).get("marker_lfc", 3)),
         equiv_alpha=lambda wc: float(config.get("deg_and_tost", {}).get("equiv_alpha", 0.05)),
@@ -775,22 +789,22 @@ rule deg_and_tost:
         set -euo pipefail
         mkdir -p "{params.outdir}"
 
-        test -s "{params.seurat_rds}"
-        test -s "{params.celltype_sets}"
+        SEURAT_CSV="$(printf "%s," {input.seurat_rds} | sed 's/,$//')"
+        test -n "$SEURAT_CSV"
+        test -s "{input.celltype_sets}"
 
-        Rscript scripts\pseudobulk_deg_tost_gsea.R \
-            --seurat  "{params.seurat_rds}" \
-            --celltype_sets "{params.celltype_sets}" \
-            --outdir  "{params.outdir}" \
-            --assay       {params.assay} \
-            --min_baseMean  {params.min_baseMean} \
-            --seed        {params.seed} \
-            --min_cells_per_group        {params.min_cells_per_group} \
-            --marker_padj        {params.marker_padj} \
-            --marker_lfc        {params.marker_lfc} \
-            --equiv_alpha        {params.equiv_alpha} \
-            --equiv_delta        {params.equiv_delta} \
-
+        Rscript scripts/pseudobulk_deg_tost_gsea.R \
+            --seurat "$SEURAT_CSV" \
+            --celltype_sets "{input.celltype_sets}" \
+            --outdir "{params.outdir}" \
+            --assay {params.assay} \
+            --min_baseMean {params.min_baseMean} \
+            --min_cells_per_group {params.min_cells_per_group} \
+            --marker_padj {params.marker_padj} \
+            --marker_lfc {params.marker_lfc} \
+            --equiv_alpha {params.equiv_alpha} \
+            --equiv_delta {params.equiv_delta} \
+            --seed {params.seed}
 
         tmp="{output.done}.tmp"
         echo ok > "$tmp"
