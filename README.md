@@ -217,9 +217,10 @@ Reference
   - STAR index
   |
   v
-Alignment / Counting
+Alignment / Counting 
   - STARsolo
   - gene x cell matrix
+  - raw OR trimmed depending on mode
 
 ```
 
