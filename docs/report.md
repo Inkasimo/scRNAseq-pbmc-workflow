@@ -1,5 +1,14 @@
 # Reproducible scRNA-seq Analysis Pipeline (PBMC)
 
+# Status (Work in progress)
+**This report is a living document.**
+
+This document is a working draft and does not currently reflect the exact behavior of the codebase.
+
+Some sections describe intended design rather than implemented functionality, and parts of the text may be outdated or incorrect.
+
+This report will be revised once downstream analyses and outputs are finalized and the documentation is synchronized with the workflow.
+
 ## 1. Overview
 This project implements a reproducible, containerized scRNA-seq analysis
 pipeline using Snakemake and Docker. The pipeline is demonstrated on
