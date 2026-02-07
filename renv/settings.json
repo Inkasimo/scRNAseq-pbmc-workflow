@@ -17,11 +17,6 @@
   "vcs.ignore.cellar": true,
   "vcs.ignore.library": true,
   "vcs.ignore.local": true,
-  "vcs.manage.ignores": true,
-  "r.lsp.debug": false,
-  "r.lsp.diagnostics": false,
-  "r.bracketedPaste": false,
-  "r.rterm.option": [],
-  "r.sessionWatcher": false
+  "vcs.manage.ignores": true
 }
 
