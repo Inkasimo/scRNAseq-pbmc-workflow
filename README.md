@@ -32,11 +32,14 @@ This repository is intended as a **technical portfolio / learning project**.
 
 - Seurat objects
 - Cell-level QC and annotation
-- Differential expression and TOST analysis
+- Differential expression (DESeq2) and equivalence testing (TOST)
 - Enrichment analysis
 - Co-expression network analysis (work in progress)
 
 ## Requirements
+
+- Full run requires ~25–30 GB RAM for STAR index and alignment
+  and several hours depending on cores.
 
 ### Required
 
@@ -169,21 +172,23 @@ This avoids reliance on unstable upstream URLs and ensures reproducible executio
 
 ## Workflow
 
-### Exexution flow
+### Execution flow
 
 ```text
 
 config/config.yaml
         |
         v
-run_analysis.py  (section-based CLI)
-        |
-        v
-Docker container
+run_analysis.py
+(section-based CLI)
         |
         v
 Snakemake DAG
-
+(workflow logic)
+        |
+        v
+Docker container
+(reproducible execution environment)
 
 ```
 
@@ -264,8 +269,12 @@ results/             # Outputs and logs (not versioned)
   qc/                 # FastQC / MultiQC reports
   alignment/           # STARsolo outputs
   logs/                # Execution logs
+  downstream/         # Downstream analysis results
+	/deg_and_tost     # DEG and TOST analysis results
+	/seurat           # Seurat objects and related plots and tables
+	/networks         # Network analysis results (Work in progress)
 docs/                # Documentation (user manual, report, notes)
-scripts/             # Helper scripts (currently empty / reserved)
+scripts/             # R-scripts and helpers
 run_analysis.py      # Optional Python wrapper for section-based execution
 ```
 
@@ -278,7 +287,10 @@ run_analysis.py      # Optional Python wrapper for section-based execution
 - Biological analyses are included to validate 
   pipeline correctness and demonstrate statistically coherent downstream usage, 
   not to claim novel biological findings.
+  
+## Non-goals
 
+- This pipeline is not intended to benchmark methods or claim novel biological findings.
 
 ## Citation
 
