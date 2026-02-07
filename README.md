@@ -172,112 +172,91 @@ This avoids reliance on unstable upstream URLs and ensures reproducible executio
 scRNA-seq PBMC Workflow (Docker + Snakemake + CLI wrapper)
 =========================================================
 
-                    +----------------------+
-                    |   config/config.yaml |
-                    +----------+-----------+
-                               |
-                               v
-                    +----------------------+
-                    |  run_analysis.py     |
-                    |  (section runner)    |
-                    +----------+-----------+
-                               |
-                               v
-                    +----------------------+
-                    |  Snakemake (DAG)     |
-                    |  workflow/Snakefile  |
-                    +----------+-----------+
-                               |
-   -------------------------------------------------------------------------
-   UPSTREAM (engineering)                                               
-   -------------------------------------------------------------------------
-
-  [FASTQs]
-    |-- download OR validate presence ------------------------------+
-    |                                                               |
-    v                                                               v
-+------------------+                                       +------------------+
-| FastQC (raw)     |                                       | Cutadapt (opt)   |
-+--------+---------+                                       +--------+---------+
-         |                                                          |
-         v                                                          v
-+------------------+                                       +------------------+
-| MultiQC (raw)    |                                       | FastQC (trimmed) |
-+--------+---------+                                       +--------+---------+
-                                                           | 
-                                                           v
-                                                  +------------------+
-                                                  | MultiQC (trimmed)|
-                                                  +--------+---------+
-
-  [REFERENCE]
+config/config.yaml
     |
-    |-- download genome+gtf (if needed)
-    |-- build STAR index (or validate existing)
-    |-- validate whitelist
     v
-+------------------------------+
-| Reference ready (STAR index) |
-+---------------+--------------+
-                |
-                v
-
-  [ALIGNMENT / COUNTING]
-                |
-                v
-+---------------------------------------------+
-| STARsolo (raw OR trimmed mode)              |
-| -> gene x cell count matrix (MTX+features+barcodes)
-+----------------------+----------------------+
-                       |
-                       v
-
-   -------------------------------------------------------------------------
-   DOWNSTREAM (analysis)  (per donor, then cross-donor)
-   -------------------------------------------------------------------------
-
-  Per-donor:
+run_analysis.py  (section runner)
+    |
     v
-+------------------------------+
-| Build Seurat object + QC     |
-| (CreateSeuratObject, QC plots|
-|  qc_metrics.tsv)             |
-+---------------+--------------+
-                |
-                v
-+------------------------------+
-| QC filter + normalization    |
-| NormalizeData + HVGs + Scale |
-+---------------+--------------+
-                |
-                v
-+------------------------------+
-| Clustering + annotation      |
-| (markers / module scores)    |
-+---------------+--------------+
-                |
-                v
+Snakemake DAG (workflow/Snakefile)
+    |
+    v
+Docker image (scrnaseq-workflow)
+    |
+    v
 
-  Cross-donor (all donors together):
-                v
-+----------------------------------------------+
-| Pseudobulk by donor x cell-type-like group   |
-| -> DESeq2 (donor blocking)                   |
-| -> Markers (strict)                          |
-| -> TOST equivalence (conserved)              |
-+----------------------+-----------------------+
-                       |
-                       v
-+----------------------------------------------+
-| Enrichment                                    |
-| - GSEA (fgsea) on ranked log2FC               |
-| - ORA (clusterProfiler enricher) on gene sets |
-+----------------------------------------------+
 
-  (Next)
-+----------------------------------------------+
-| Co-expression network analysis (WIP)          |
-+----------------------------------------------+
+UPSTREAM (engineering)
+---------------------
+
+FASTQs
+  |
+  +--> (A) download (optional) --------------------+
+  |                                                |
+  +--> (B) validate presence (no download)          |
+                                                   v
+                                              FASTQs ready
+                                                   |
+                                                   v
+Raw QC
+  |
+  +--> FastQC (raw)
+  |
+  +--> MultiQC (raw)
+  |
+  v
+
+Trim (optional)
+  |
+  +--> Cutadapt
+  |
+  +--> FastQC (trimmed)
+  |
+  +--> MultiQC (trimmed)
+  |
+  v
+
+Reference
+  |
+  +--> genome FASTA + GTF (download if missing)
+  +--> whitelist present
+  +--> STAR index (build or validate existing)
+  |
+  v
+
+Alignment / Counting
+  |
+  +--> STARsolo (raw OR trimmed depending on mode)
+  +--> outputs: matrix.mtx + features.tsv + barcodes.tsv
+  |
+  v
+
+
+DOWNSTREAM (analysis)
+--------------------
+
+Per-donor (run per donor)
+  |
+  +--> Seurat object + QC metrics/plots
+  +--> QC filtering (thresholds from qc_metrics.tsv)
+  +--> Normalization + HVGs + scaling
+  +--> Clustering + annotation (markers / module scores)
+  |
+  v
+
+Cross-donor (all donors together)
+  |
+  +--> pseudobulk by (donor × celltype-like group)
+  +--> DESeq2 (donor blocking) -> markers (strict)
+  +--> TOST equivalence -> conserved sets
+  +--> Enrichment: fgsea (ranked log2FC) + ORA (gene sets)
+  |
+  v
+
+Next (WIP)
+  |
+  +--> Co-expression network analysis
+
 
 
 ## Repository structure
