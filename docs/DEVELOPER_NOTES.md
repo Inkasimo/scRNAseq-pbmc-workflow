@@ -87,3 +87,12 @@ R -q -e 'renv::activate("/work"); BiocManager::install(c("DESeq2","fgsea","clust
 
 D) Verify packages are installed
 R -q -e 'renv::activate("/work"); pkgs<-c("DESeq2","fgsea","clusterProfiler","msigdbr
+
+
+# Docker bash
+
+docker run --rm -it \
+  -v "$(pwd)":/work \
+  -w /work \
+  scrnaseq-workflow \
+  bash
