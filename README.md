@@ -220,7 +220,7 @@ Reference
 Alignment / Counting 
   - STARsolo
   - gene x cell matrix
-  - raw OR trimmed depending on mode
+  - alignment on raw OR trimmed reads depending on mode
 
 ```
 
