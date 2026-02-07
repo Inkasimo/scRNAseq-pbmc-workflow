@@ -5,7 +5,7 @@ using **Docker + Snakemake** with a Python CLI wrapper.
 
 This repository is intended as a **technical portfolio / learning project**.
 
-# Status:
+## Status:
 Draft — core pipeline implemented; downstream analyses in progress
 
 ## Focus
