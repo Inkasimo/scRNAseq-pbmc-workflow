@@ -136,6 +136,16 @@ python3 run_analysis.py align \
 python3 run_analysis.py all --dry-run
 ```
 
+#### Trimmed flag:
+
+Use the `--trimmed` flag to enable read trimming and run all downstream steps
+using trimmed reads instead of raw reads.
+
+```bash
+python3 run_analysis.py all --trimmed
+
+```
+
 ### Option B: Direct Snakemake (no wrapper)
 
 #### Dry run
