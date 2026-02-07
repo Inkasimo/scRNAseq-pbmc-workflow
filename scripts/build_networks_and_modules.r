@@ -11,6 +11,7 @@ suppressPackageStartupMessages({
   library(msigdbr)
   library(clusterProfiler)
 })
+# ADD THE MARKER GENES AND CONSERVED GENES TO THE GEPHI NODE OUTPUT!
 
 # -------------------------
 # CLI
@@ -19,13 +20,13 @@ option_list <- list(
   make_option("--seurat", type="character", help="Comma-separated list of annotated Seurat RDS files (one per donor)."),
   make_option("--outdir", type="character", help="Output directory."),
   make_option("--celltype_sets", type="character", default="scripts/celltype_sets.R",
-              help="Path to scripts/celltype_sets.R defining celltype_sets (named list)."),
+              "Path to scripts/celltype_sets.R defining deg_sets (or celltype_sets) (named list)."),
   make_option("--markers", type="character", default="",
               help="Optional: path to scripts/markers_pbmc.R defining markers_pbmc (named list)."),
   make_option("--donor_names", type="character", default="",
               help="Optional: comma-separated donor names matching --seurat order. If empty, uses filenames."),
   make_option("--metacell_input", type="character", default="log",
-            help="Metacell aggregation scale: 'log' (RNA@data) or 'linear_then_log' (expm1 before pooling, log1p after).")
+            help="Metacell aggregation scale: 'log' (RNA@data) or 'linear_then_log' (expm1 before pooling, log1p after)."),
 
   # Defaults you requested
   make_option("--min_cells_per_donor_group", type="integer", default=200,
@@ -51,9 +52,7 @@ option_list <- list(
   make_option("--require_same_sign", type="logical", default=TRUE,
               help="Require consistent sign across donors."),
   make_option("--leiden_resolution", type="double", default=1.0,
-              help="Leiden resolution parameter."),
-  make_option("--done", type="character", default="network.done",
-              help="Sentinel filename written into outdir when complete.")
+              help="Leiden resolution parameter.")
 )
 
 opt <- parse_args(OptionParser(option_list = option_list))
@@ -66,13 +65,6 @@ dir.create(file.path(opt$outdir, "per_donor"), recursive = TRUE, showWarnings = 
 dir.create(file.path(opt$outdir, "consensus"), recursive = TRUE, showWarnings = FALSE)
 dir.create(file.path(opt$outdir, "tables"), recursive = TRUE, showWarnings = FALSE)
 
-touch_done_atomic <- function(path) {
-  d <- dirname(path)
-  if (!dir.exists(d)) dir.create(d, recursive=TRUE, showWarnings=FALSE)
-  tmp <- paste0(path, ".tmp")
-  writeLines("ok", con=tmp)
-  file.rename(tmp, path)
-}
 
 read_rds_list <- function(x) {
   xs <- strsplit(x, ",", fixed=TRUE)[[1]]
@@ -181,14 +173,47 @@ ora_hallmark <- function(genes, universe, hallmark_df) {
   )
 }
 
+# Largest connected component
+keep_largest_cc <- function(g) {
+  comp <- igraph::components(g)
+  giant <- which.max(comp$csize)
+  igraph::induced_subgraph(g, vids = which(comp$membership == giant))
+}
+
+#Graph stats
+graph_stats <- function(g) {
+  data.frame(
+    nodes = igraph::vcount(g),
+    edges = igraph::ecount(g),
+    avg_degree = mean(igraph::degree(g)),
+    density = igraph::edge_density(g),
+    components = igraph::components(g)$no,
+    stringsAsFactors = FALSE
+  )
+}
+
+
 # -------------------------
 # Load definitions
 # -------------------------
 if (!file.exists(opt$celltype_sets)) stop(paste("Missing:", opt$celltype_sets))
-source(opt$celltype_sets)  # must define celltype_sets
+source(opt$celltype_sets)
 
-if (!exists("celltype_sets")) stop("celltype_sets.R must define object 'celltype_sets' (named list).")
-if (!is.list(celltype_sets) || is.null(names(celltype_sets))) stop("'celltype_sets' must be a named list.")
+# Accept either naming convention:
+# - new: celltype_sets
+# - your current: deg_sets
+if (exists("celltype_sets")) {
+  ct_sets <- celltype_sets
+} else if (exists("deg_sets")) {
+  ct_sets <- deg_sets
+} else {
+  stop("celltype_sets file must define 'celltype_sets' or 'deg_sets' (named list).")
+}
+
+if (!is.list(ct_sets) || is.null(names(ct_sets))) {
+  stop("Celltype set object must be a named list (celltype_sets or deg_sets).")
+}
+
 
 markers_pbmc <- NULL
 if (nzchar(opt$markers)) {
@@ -228,21 +253,43 @@ pick_label_col <- function(obj) {
   stop("No usable cell type label column found in metadata (expected one of: cell_type_cluster_majority, cell_type_pred, ...).")
 }
 
-label_col <- pick_label_col(objs[[1]])
+# Decide label column
+if (exists("deg_label_col") && nzchar(deg_label_col)) {
+  label_col <- deg_label_col
+} else {
+  label_col <- pick_label_col(objs[[1]])
+}
+
+# Validate
+if (!label_col %in% colnames(objs[[1]]@meta.data)) {
+  stop(paste0("Label column '", label_col, "' not found in Seurat metadata."))
+}
+
+message("Using label column: ", label_col)
+
+
+
+for (d in names(objs)) {
+  if (!label_col %in% colnames(objs[[d]]@meta.data)) {
+    stop(paste0("Label column '", label_col, "' missing in donor '", d, "'."))
+  }
+}
 
 # -------------------------
 # MSigDB Hallmark (H)
 # -------------------------
-hallmark <- msigdbr(species = "Homo sapiens", category = "H") %>%
-  select(gs_name, gene_symbol) %>%
-  distinct()
+hallmark <- tryCatch(
+  msigdbr(species="Homo sapiens", category="H") %>% select(gs_name, gene_symbol) %>% distinct(),
+  error = function(e) stop("msigdbr failed. Ensure msigdbr is installed and available inside Docker.")
+)
+
 
 # -------------------------
 # Main: for each celltype_set build per-donor + consensus
 # -------------------------
 all_outputs <- list()
 
-for (set_name in names(celltype_sets)) {
+for (set_name in names(ct_sets)) {
   message("=== Celltype set: ", set_name, " ===")
 
   out_set <- file.path(opt$outdir, "consensus", set_name)
@@ -253,13 +300,14 @@ for (set_name in names(celltype_sets)) {
   # Collect donor edge lists
   donor_edges <- list()
   donor_genes <- list()
+  donor_genes_universe <- list()
 
   for (d in donors) {
     obj <- objs[[d]]
     md <- obj@meta.data
 
     # Which fine labels map into this set?
-    keep_labels <- celltype_sets[[set_name]]
+    keep_labels <- ct_sets[[set_name]]
     if (is.null(keep_labels) || length(keep_labels) == 0) next
 
     cells <- rownames(md)[md[[label_col]] %in% keep_labels]
@@ -279,7 +327,7 @@ for (set_name in names(celltype_sets)) {
 
   # Choose aggregation scale
   if (opt$metacell_input == "linear_then_log") {
-    expr_to_pool <- Matrix::expm1(expr_log)   # back to linear normalized
+    expr_to_pool <- expm1(expr_log)   # back to linear normalized
   } else if (opt$metacell_input == "log") {
     expr_to_pool <- expr_log                  # keep log scale (demo-fast)
   } else {
@@ -290,7 +338,7 @@ for (set_name in names(celltype_sets)) {
   mc_pool <- make_metacells(expr_to_pool, size=opt$metacell_size, seed=opt$seed)
 
   # Ensure correlations use log scale
-  mc <- if (opt$metacell_input == "linear_then_log") Matrix::log1p(mc_pool) else mc_pool
+  mc <- if (opt$metacell_input == "linear_then_log") log1p(mc_pool) else mc_pool
 
   # Gene filter by detection fraction 
   mc_f <- filter_genes_detect(mc, frac=opt$gene_detect_frac)
@@ -323,15 +371,47 @@ for (set_name in names(celltype_sets)) {
     }
 
     ed$donor <- d
-    donor_edges[[d]] <- ed
-    donor_genes[[d]] <- sort(unique(c(ed$from, ed$to)))
+
+    # genes present in this donor BEFORE LCC (for universe counting)
+    donor_genes_universe[[d]] <- sort(unique(c(ed$from, ed$to)))
+
+
+    g_donor <- igraph::graph_from_data_frame(
+      ed %>% dplyr::select(from, to, weight = cor),
+      directed = FALSE
+    )
+
+    g_donor <- igraph::simplify(g_donor, remove.multiple = TRUE, remove.loops = TRUE)
+    g_donor <- keep_largest_cc(g_donor)
+
+    # Re-extract edges after LCC
+    ed2 <- igraph::as_data_frame(g_donor, what = "edges")
+
+    # Standardize name: weight -> cor
+    if ("weight" %in% names(ed2)) names(ed2)[names(ed2) == "weight"] <- "cor"
+
+    ed2$donor <- d
+
+    # IMPORTANT: store the post-LCC edges for consensus
+    donor_edges[[d]] <- ed2
+    donor_genes[[d]] <- sort(unique(c(ed2$from, ed2$to)))
 
     # Write per-donor edges (Gephi-ready)
     write.table(
-      ed %>% select(from, to, weight=cor, donor),
-      file=file.path(out_per, paste0("edges_", d, ".tsv")),
-      sep="\t", row.names=FALSE, quote=FALSE
+      ed2 %>% dplyr::transmute(from, to, weight = cor, donor),
+      file = file.path(out_per, paste0("edges_", d, ".tsv")),
+      sep = "\t", row.names = FALSE, quote = FALSE
     )
+
+    saveRDS(g_donor, file = file.path(out_per, paste0("graph_", d, ".rds")))
+
+    write.table(
+      graph_stats(g_donor),
+      file = file.path(out_per, paste0("stats_", d, ".tsv")),
+      sep = "\t", row.names = FALSE, quote = FALSE
+    )
+
+
   }
 
   if (length(donor_edges) < opt$consensus_min_donors) {
@@ -339,8 +419,10 @@ for (set_name in names(celltype_sets)) {
     next
   }
 
-  # Consensus gene universe: intersection across donors (you suggested this)
-  universe <- Reduce(intersect, donor_genes)
+  gene_counts <- table(unlist(donor_genes_universe))
+  universe <- names(gene_counts[gene_counts >= opt$consensus_min_donors])
+
+
 
   # Stack edges and compute support + sign consistency + summary weight
   all_ed <- bind_rows(donor_edges) %>%
@@ -375,9 +457,26 @@ for (set_name in names(celltype_sets)) {
 
   cons <- cons %>% mutate(weight = median_cor) %>% select(from, to, weight, support)
 
-  # Build igraph + Leiden modules
-  g <- graph_from_data_frame(cons %>% select(from, to, weight), directed=FALSE)
-  g <- simplify(g, remove.multiple=TRUE, remove.loops=TRUE, edge.attr.comb="max")
+  g <- igraph::graph_from_data_frame(
+    cons %>% select(from, to, weight),
+    directed = FALSE
+  ) 
+
+  g <- igraph::simplify(g, remove.multiple = TRUE, remove.loops = TRUE, edge.attr.comb = "max")
+  g <- keep_largest_cc(g)
+
+  cons <- igraph::as_data_frame(g, what = "edges")
+
+  if ("weight" %in% names(cons)) names(cons)[names(cons) == "weight"] <- "cor"
+
+  saveRDS(g, file = file.path(out_set, "graph_consensus.rds"))
+
+  write.table(
+    graph_stats(g),
+    file = file.path(out_set, "stats_consensus.tsv"),
+    sep = "\t", row.names = FALSE, quote = FALSE
+  )
+
 
   memb <- run_leiden(g, resolution=opt$leiden_resolution, seed=opt$seed)
   modules <- data.frame(
@@ -398,7 +497,7 @@ for (set_name in names(celltype_sets)) {
     stringsAsFactors = FALSE
   )
 
-  # Optional: annotate marker membership (if markers_pbmc provided)
+  # Annotate marker membership (if markers_pbmc provided)
   if (!is.null(markers_pbmc)) {
     # For each marker set, add boolean column: is_marker_<name>
     for (mk in names(markers_pbmc)) {
@@ -410,7 +509,11 @@ for (set_name in names(celltype_sets)) {
 
   # Write Gephi tables
   write.table(nodes, file=file.path(out_set, "nodes.tsv"), sep="\t", row.names=FALSE, quote=FALSE)
-  write.table(cons,  file=file.path(out_set, "edges.tsv"), sep="\t", row.names=FALSE, quote=FALSE)
+  
+  write.table(cons %>% transmute(from, to, weight = cor, support),
+            file = file.path(out_set, "edges.tsv"),
+            sep = "\t", row.names = FALSE, quote = FALSE)
+
   write.table(modules, file=file.path(out_set, "modules.tsv"), sep="\t", row.names=FALSE, quote=FALSE)
 
   # Enrichment per module (Hallmark ORA)
@@ -483,5 +586,3 @@ for (set_name in names(celltype_sets)) {
   )
 }
 
-# Sentinel
-touch_done_atomic(file.path(opt$outdir, opt$done))

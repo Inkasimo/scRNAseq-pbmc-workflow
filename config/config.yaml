@@ -63,3 +63,58 @@ deg_and_tost:
   marker_lfc: 3
   equiv_alpha: 0.01
   equiv_delta: 0.75
+
+
+network:
+  enabled: true        # downstream, optional; default on
+
+  # Cell-type–specific networks are built per donor,
+  # then combined via cross-donor consensus
+  celltype_sets:
+    - T_like
+    - B_like
+    - Mono_like
+
+  # Safety guard: skip donor × celltype if too few cells
+  min_cells_per_donor_group: 200
+
+  # Metacell construction (noise reduction, no pseudo-replication)
+  metacells:
+    enabled: true
+    size: 20
+    seed: 42
+
+  # Gene universe for network construction
+  gene_filter:
+    min_detect_frac: 0.05    # detected in ≥5% of metacells
+    hvg_n: 3000              # variable genes used for correlations
+
+  # Correlation model
+  correlation:
+    method: spearman         # robust to outliers
+    sign: positive_only      # coexpression modules
+    min_abs_cor: 0.0         # rely on top-k sparsification
+
+  # Graph sparsification (per donor)
+  sparsify:
+    top_k: 25                # edges per gene
+
+  # Consensus network across donors
+  consensus:
+    min_donors: 3            # edge must appear in ≥3 donors
+    require_same_sign: true
+
+  # Module detection
+  modules:
+    method: leiden
+    resolution: 1.0
+
+  # Functional annotation
+  enrichment:
+    enabled: true
+    methods:
+      - ORA
+    gene_sets:
+      - MSigDB_Hallmark
+      - Marker_sets
+
