@@ -151,7 +151,7 @@ and alignment results.
 
 As a guideline:
 
-- ~50–70 GB of free disk space is recommended for a full run on the PBMC dataset
+- ~170 GB of free disk space is recommended for a full run on the PBMC dataset
 (including reference files, FASTQs, and results).
 
 Disk usage may increase if optional steps such as BAM output or trimming are enabled.
