@@ -1,11 +1,12 @@
 # scRNA-seq PBMC Workflow
 
-**Work in progress**
-
 Production-style scRNA-seq analysis pipeline
 using **Docker + Snakemake** with a Python CLI wrapper.
 
 This repository is intended as a **technical portfolio / learning project**.
+
+# Status:
+Draft — core pipeline implemented; downstream analyses in progress
 
 ## Focus
 - Reproducible execution
@@ -130,7 +131,7 @@ python3 run_analysis.py align \
 
 ```
 
-#### Dry run (no execution):
+#### Dry run (no execution, sanity check):
 
 ```bash
 python3 run_analysis.py all --dry-run
