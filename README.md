@@ -317,9 +317,6 @@ Once the workflow is finalized, a complete snapshot of representative results
 (including STARsolo alignment outputs and downstream analysis output data)
 will be archived on Zenodo with a DOI.
 
-The repository will then reference the archived dataset to enable
-full end-to-end reproducibility without requiring re-alignment.
-
 
 ## Citation
 
