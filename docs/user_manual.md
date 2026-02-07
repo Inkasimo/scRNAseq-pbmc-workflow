@@ -1,5 +1,9 @@
 # User manual
 
+## 0. Status
+
+Upstream stable; downstream partially implemented; network module not implemented.
+
 ## 1. Purpose and Scope
 
 ### Purpose
@@ -23,11 +27,12 @@ reference preparation, and alignment/quantification, including:
 
 ### Downstream Analysis
 
--Cell-level filtering, normalization, and clustering
+- Cell-level filtering, normalization, and clustering
 - Cell type annotation
 - Differential expression analysis
+- Equivalence test (TOST)
 - Pathway or gene set enrichment analysis
-- Co-expression and modularity analysis
+- Co-expression and modularity analysis (Work in progress)
 - Result summarization and visualization
 
 ### Project Goal
@@ -184,7 +189,7 @@ From the repository root:
 
 ```bash
 docker build -t scrnaseq-workflow -f containers/Dockerfile .
-````
+```
 
 ### 2. (Optional) Install wrapper dependencies
 
@@ -330,7 +335,7 @@ To see which pipeline sections can be executed:
 
 ```bash
 python3 run_analysis.py --list-sections
-````
+```
 
 Typical sections include:
 
@@ -346,6 +351,12 @@ Typical sections include:
 - downstream
 - all
 - all_no_download
+- build_seurat_object_qc
+- filter_and_normalize_seurat
+- cluster_annotate_seurat
+- deg_and_tost
+- downstream
+- network inference **Work in progress, not implemented yet**
 - unlock
 
 
@@ -408,7 +419,7 @@ python3 run_analysis.py align \
   --cpus 8 --cores 8 \
   -j 1 \
   --set-threads starsolo=8
-````
+```
 
 #### Trimmed vs Untrimmed Mode
 

@@ -1,6 +1,9 @@
 # scRNA-seq PBMC Workflow
 
-Production-style scRNA-seq pipeline using **Docker + Snakemake**.
+**Work in progress**
+
+Production-style scRNA-seq analysis pipeline
+using **Docker + Snakemake** with a Python CLI wrapper.
 
 This repository is intended as a **technical portfolio / learning project**.
 
@@ -29,11 +32,14 @@ This repository is intended as a **technical portfolio / learning project**.
 
 - Seurat objects
 - Cell-level QC and annotation
-- Differential expression
+- Differential expression (DESeq2) and equivalence testing (TOST)
 - Enrichment analysis
-- Co-expression network analysis
+- Co-expression network analysis (work in progress)
 
 ## Requirements
+
+- Full run requires ~25–30 GB RAM for STAR index and alignment
+  and several hours depending on cores.
 
 ### Required
 
@@ -46,6 +52,9 @@ All core tools are provided inside the Docker image, including:
 - FastQC
 - MultiQC
 - Cutadapt
+- Seurat
+- DESeq2
+- igraph
 
 ### Optional (wrapper only)
 
@@ -127,6 +136,16 @@ python3 run_analysis.py align \
 python3 run_analysis.py all --dry-run
 ```
 
+#### Trimmed flag:
+
+Use the `--trimmed` flag to enable read trimming and run all downstream steps
+using trimmed reads instead of raw reads.
+
+```bash
+python3 run_analysis.py all --trimmed
+
+```
+
 ### Option B: Direct Snakemake (no wrapper)
 
 #### Dry run
@@ -161,6 +180,90 @@ The 10x Genomics barcode whitelist is bundled directly in the repository:
 
 This avoids reliance on unstable upstream URLs and ensures reproducible execution.
 
+## Workflow
+
+### Execution flow
+
+```text
+
+config/config.yaml
+        |
+        v
+run_analysis.py
+(section-based CLI)
+        |
+        v
+Snakemake DAG
+(workflow logic)
+        |
+        v
+Docker container
+(reproducible execution environment)
+
+```
+
+### Upstream (engineering)
+
+```text
+
+FASTQs
+  |
+  +-- download (optional)
+  |
+  +-- validate presence
+  |
+  v
+QC (raw)
+  - FastQC
+  - MultiQC
+  |
+  +-- trim (optional)
+  |     |
+  |     v
+  |   QC (trimmed)
+  |     - FastQC
+  |     - MultiQC
+  |
+  v
+Reference
+  - genome FASTA
+  - GTF
+  - barcode whitelist
+  - STAR index
+  |
+  v
+Alignment / Counting 
+  - STARsolo
+  - gene x cell matrix
+  - alignment on raw OR trimmed reads depending on mode
+
+```
+
+### Downstream (analysis)
+
+```text
+
+Per-donor
+  |
+  +-- Seurat object
+  +-- cell QC + filtering
+  +-- normalization + HVGs
+  +-- clustering + annotation
+  |
+  v
+Cross-donor
+  |
+  +-- pseudobulk by donor & cell type
+  +-- DESeq2 (DE)
+  +-- TOST (equivalence test)
+  +-- enrichment (GSEA / ORA)
+  |
+  v
+(Work in progress)
+  - co-expression network analysis
+
+```
+
 ## Repository structure
 
 ```text
@@ -176,8 +279,12 @@ results/             # Outputs and logs (not versioned)
   qc/                 # FastQC / MultiQC reports
   alignment/           # STARsolo outputs
   logs/                # Execution logs
+  downstream/         # Downstream analysis results
+	/deg_and_tost     # DEG and TOST analysis results
+	/seurat           # Seurat objects and related plots and tables
+	/networks         # Network analysis results (Work in progress)
 docs/                # Documentation (user manual, report, notes)
-scripts/             # Helper scripts (currently empty / reserved)
+scripts/             # R-scripts and helpers
 run_analysis.py      # Optional Python wrapper for section-based execution
 ```
 
@@ -187,6 +294,21 @@ run_analysis.py      # Optional Python wrapper for section-based execution
 - FASTQ downloading is controlled via `io.download_fastqs` in `config/config.yaml`  
   (automatically set by the wrapper for relevant sections)
 - STAR index requires ~25–30 GB RAM
+- Biological analyses are included to validate 
+  pipeline correctness and demonstrate statistically coherent downstream usage, 
+  not to claim novel biological findings.
+- R package versions inside the Docker image are managed with `renv`
+  to ensure reproducible R environments.
+  Users do not need to interact with `renv` directly.
+- Developer / maintainer notes (including environment maintenance,
+STAR indexing details, and Docker CPU behavior) are kept in
+`docs/DEVELOPER_NOTES.md` and are not required to run the workflow.
+
+
+  
+## Non-goals
+
+- This pipeline is not intended to benchmark methods or claim novel biological findings.
 
 ## Citation
 

@@ -1,16 +1,18 @@
 pbmc:
+
+  #TODO: Deal with the fastqdir ambiguity
   donor1:
     url: "https://cf.10xgenomics.com/samples/cell-exp/9.0.0/5k_Human_Donor1_PBMC_3p_gem-x_Multiplex/5k_Human_Donor1_PBMC_3p_gem-x_Multiplex_fastqs.tar"
-    fastq_dir: "data/raw/donor1/5k_Human_Donor1_PBMC_3p_gem-x_GEX_fastqs"
+    fastq_base: "data/raw/donor1"
   donor2:
     url: "https://cf.10xgenomics.com/samples/cell-exp/9.0.0/5k_Human_Donor2_PBMC_3p_gem-x_Multiplex/5k_Human_Donor2_PBMC_3p_gem-x_Multiplex_fastqs.tar"
-    fastq_dir: "data/raw/donor2/5k_Human_Donor2_PBMC_3p_gem-x_GEX_fastqs"
+    fastq_base: "data/raw/donor2"
   donor3:
     url: "https://cf.10xgenomics.com/samples/cell-exp/9.0.0/5k_Human_Donor3_PBMC_3p_gem-x_Multiplex/5k_Human_Donor3_PBMC_3p_gem-x_Multiplex_fastqs.tar"
-    fastq_dir: "data/raw/donor3/5k_Human_Donor3_PBMC_3p_gem-x_GEX_fastqs"
+    fastq_base: "data/raw/donor3"
   donor4:
     url: "https://cf.10xgenomics.com/samples/cell-exp/9.0.0/5k_Human_Donor4_PBMC_3p_gem-x_Multiplex/5k_Human_Donor4_PBMC_3p_gem-x_Multiplex_fastqs.tar"
-    fastq_dir: "data/raw/donor4/5k_Human_Donor4_PBMC_3p_gem-x_GEX_fastqs"
+    fastq_base: "data/raw/donor4"
 
 resources:
   fastqc_threads: 2
@@ -38,3 +40,26 @@ ref:
   gtf_url: "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_45/gencode.v45.annotation.gtf.gz"
 
   build_star_index: false
+
+seurat_normalization:
+  method: "LogNormalize"        # LogNormalize | SCT
+  scale_factor: 10000
+  hvg_method: "vst"
+  hvg_nfeatures: 2000
+  vars_to_regress: ["percent.mt"]   # or ["percent.mt","nCount_RNA"]
+  scale_features: "hvg"             # hvg | all
+
+seurat_annotation:
+  dims: 30
+  resolution: 0.3
+  seed: 42
+
+deg_and_tost:
+  assay: "RNA"
+  min_baseMean: 10
+  min_cells_per_group: 50
+  seed: 42
+  marker_padj: 1e-10
+  marker_lfc: 3
+  equiv_alpha: 0.01
+  equiv_delta: 0.75

@@ -19,6 +19,13 @@ TRIM_R2_ADAPTER = str(config.get("trim", {}).get("adapter_r2", "AGATCGGAAGAG"))
 TRIM_R2_QUAL = int(config.get("trim", {}).get("q_r2", 20))
 TRIM_R2_MINLEN = int(config.get("trim", {}).get("minlen_r2", 20))
 
+# Canonical → legacy mapping (DO NOT change legacy folders)
+# This is because I realized starsolo also has "raw"
+LEGACY_BRANCH = {
+    "untrimmed": "raw",
+    "trimmed": "trimmed"
+}
+
 
 # Helpers
 
@@ -97,6 +104,24 @@ def starsolo_done(donor, mode):
         #raise ValueError(f"No {read} FASTQs found with pattern: {pattern}")
     #return files
 
+def resolve_fastq_dir(donor):
+    base = config["pbmc"][donor].get("fastq_base", config["pbmc"][donor].get("fastq_dir"))
+    if base is None:
+        raise ValueError(f"{donor}: need pbmc.{donor}.fastq_base (or fastq_dir)")
+
+    # search base recursively for fastqs
+    r1 = sorted(glob.glob(os.path.join(base, "**", "*_R1_*.fastq.gz"), recursive=True))
+    r2 = sorted(glob.glob(os.path.join(base, "**", "*_R2_*.fastq.gz"), recursive=True))
+
+    if not r1 or not r2:
+        raise ValueError(f"{donor}: no R1/R2 fastqs found under {base}")
+
+    # choose the directory that contains the most R1 files (usually the right one)
+    from collections import Counter
+    r1_dirs = Counter(os.path.dirname(x) for x in r1)
+    fqdir = r1_dirs.most_common(1)[0][0]
+    return fqdir
+
 
 # ALL RULE
 
@@ -127,6 +152,36 @@ rule all:
             m=["trimmed"] if is_trimmed() else ["raw"],
         ),
 
+                # Seurat/QC downstream (only for the active mode)
+        expand(
+            "results/downstream/seurat/{trim_state}/{donor}/seurat_and_qc/seurat_qc.done",
+            donor=DONORS,
+            trim_state=["trimmed"] if is_trimmed() else ["untrimmed"],
+        ),
+
+
+                # Seurat/filtering and normalization
+        expand(
+            "results/downstream/seurat/{trim_state}/{donor}/seurat_filt_normalized/seurat_filt_normalize.done",
+            donor=DONORS,
+            trim_state=["trimmed"] if is_trimmed() else ["untrimmed"],
+        ),
+
+                # Seurat clustering + annotation
+        expand(
+            "results/downstream/seurat/{trim_state}/{donor}/seurat_cluster_annot/seurat_cluster_annot.done",
+            donor=DONORS,
+            trim_state=["trimmed"] if is_trimmed() else ["untrimmed"],
+        ),
+
+        # Deg and TOST
+        expand(
+            "results/downstream/deg_and_tost/{trim_state}/deg_and_tost/deg_and_tost.done",
+            trim_state=["trimmed"] if is_trimmed() else ["untrimmed"],
+        ),
+
+
+
 
 
 
@@ -135,6 +190,8 @@ rule all:
 #
 
 # ---- FASTQ acquisition: optional download vs presence check ----
+
+# TODO: Deal with the output folder ambiguity
 
 if DOWNLOAD_FASTQS:
     rule download_fastqs:
@@ -174,7 +231,7 @@ else:
         output:
             done="data/raw/{donor}/fastqs.done"
         params:
-            fqdir=lambda wc: config["pbmc"][wc.donor]["fastq_dir"]
+            fqdir=lambda wc: resolve_fastq_dir(wc.donor)
         shell:
             r"""
             set -euo pipefail
@@ -199,7 +256,7 @@ rule fastqc_raw:
         "results/logs/qc/fastqc_raw_{donor}.log"
     threads: FASTQC_THREADS
     params:
-        fqdir=lambda wc: config["pbmc"][wc.donor]["fastq_dir"]
+        fqdir=lambda wc: resolve_fastq_dir(wc.donor)
     shell:
         r"""
         set -euo pipefail
@@ -258,14 +315,16 @@ rule multiqc_raw:
     shell:
         r"""
         set -euo pipefail
-        mkdir -p results/qc/multiqc/raw
-        mkdir -p results/logs/qc
+        mkdir -p results/qc/multiqc/raw results/logs/qc
 
         echo "[START] $(date)" > {log}
         multiqc results/qc/fastqc/raw \
-            -o results/qc/multiqc/raw >> {log} 2>&1
+            -o results/qc/multiqc/raw \
+            --filename multiqc_report.html \
+            >> {log} 2>&1
         echo "[END] $(date)" >> {log}
         """
+
         
 rule multiqc_trimmed:
     input:
@@ -278,8 +337,12 @@ rule multiqc_trimmed:
         r"""
         set -euo pipefail
         mkdir -p results/qc/multiqc/trimmed results/logs/qc
+
         echo "[START] $(date)" > {log}
-        multiqc results/qc/fastqc/trimmed -o results/qc/multiqc/trimmed >> {log} 2>&1
+        multiqc results/qc/fastqc/trimmed \
+            -o results/qc/multiqc/trimmed \
+            --filename multiqc_report.html \
+            >> {log} 2>&1
         echo "[END] $(date)" >> {log}
         """
 
@@ -293,7 +356,7 @@ rule trim_fastqs:
     log:
         "results/logs/trim/cutadapt_{donor}.log"
     params:
-        fqdir=lambda wc: config["pbmc"][wc.donor]["fastq_dir"],
+        fqdir=lambda wc: resolve_fastq_dir(wc.donor),
         outdir=lambda wc: f"data/trimmed/{wc.donor}",
         adapter_r2=TRIM_R2_ADAPTER,
         q_r2=TRIM_R2_QUAL,
@@ -519,7 +582,7 @@ rule starsolo_raw:
         done="results/alignment/starsolo/raw/{donor}/starsolo.done"
     params:
         outdir="results/alignment/starsolo/raw/{donor}",
-        fqdir=lambda wc: config["pbmc"][wc.donor]["fastq_dir"],
+        fqdir=lambda wc: resolve_fastq_dir(wc.donor),
     shell:
         r"""
         set -euo pipefail
@@ -607,3 +670,178 @@ rule starsolo_trimmed:
 # 
 # --- DOWNSTREAM RULES
 #
+
+rule seurat_qc:
+    input:
+        starsolo_done=lambda wc: f"results/alignment/starsolo/{LEGACY_BRANCH[wc.trim_state]}/{wc.donor}/starsolo.done"
+    output:
+        done="results/downstream/seurat/{trim_state}/{donor}/seurat_and_qc/seurat_qc.done"
+        # (optional) only keep this if your R script truly writes it:
+        # rds="results/downstream/seurat/{trim_state}/{donor}/seurat_object.rds"
+    params:
+        filtered_dir=lambda wc: f"results/alignment/starsolo/{LEGACY_BRANCH[wc.trim_state]}/{wc.donor}",
+        outdir=lambda wc: f"results/downstream/seurat/{wc.trim_state}/{wc.donor}/seurat_and_qc"
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p "{params.outdir}"
+
+        MTX="{params.filtered_dir}/Solo.out/Gene/filtered/matrix.mtx"
+        BARCODES="{params.filtered_dir}/Solo.out/Gene/filtered/barcodes.tsv"
+        FEATURES="{params.filtered_dir}/Solo.out/Gene/filtered/features.tsv"
+
+
+        test -s "$MTX"
+        test -s "$BARCODES"
+        test -s "$FEATURES"
+
+        Rscript scripts/build_seurat_objects_qc.R \
+            --mtx "$MTX" \
+            --features "$FEATURES" \
+            --barcodes "$BARCODES" \
+            --outdir "{params.outdir}" \
+            --donor "{wildcards.donor}"
+
+        tmp="{output.done}.tmp"
+        echo ok > "$tmp"
+        mv -f "$tmp" "{output.done}"
+        """
+
+rule seurat_filt_normalize:
+    input:
+        seurat_done="results/downstream/seurat/{trim_state}/{donor}/seurat_and_qc/seurat_qc.done"
+    output:
+        done="results/downstream/seurat/{trim_state}/{donor}/seurat_filt_normalized/seurat_filt_normalize.done"
+    params:
+        seurat_dir=lambda wc: f"results/downstream/seurat/{wc.trim_state}/{wc.donor}/seurat_and_qc",
+        outdir=lambda wc: f"results/downstream/seurat/{wc.trim_state}/{wc.donor}/seurat_filt_normalized",
+        norm_method=lambda wc: str(config.get("seurat_normalization", {}).get("method", "LogNormalize")),
+        scale_factor=lambda wc: int(config.get("seurat_normalization", {}).get("scale_factor", 10000)),
+        hvg_method=lambda wc: str(config.get("seurat_normalization", {}).get("hvg_method", "vst")),
+        hvg_nfeatures=lambda wc: int(config.get("seurat_normalization", {}).get("hvg_nfeatures", 2000)),
+        vars_to_regress=lambda wc: ",".join(config.get("seurat_normalization", {}).get("vars_to_regress", ["percent.mt"])),
+        scale_features=lambda wc: str(config.get("seurat_normalization", {}).get("scale_features", "hvg")),
+
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p "{params.outdir}"
+
+        SEURAT="{params.seurat_dir}/{wildcards.donor}_object.rds"
+        QC="{params.seurat_dir}/qc_metrics.tsv"
+        
+        test -s "$SEURAT"
+        test -s "$QC"
+    
+
+        Rscript scripts/qcfilt_normalize_seurat.R \
+            --seurat "$SEURAT" \
+            --qc_metrics "$QC" \
+            --outdir "{params.outdir}" \
+            --donor "{wildcards.donor}" \
+            --norm_method "{params.norm_method}" \
+            --scale_factor {params.scale_factor} \
+            --hvg_method "{params.hvg_method}" \
+            --hvg_nfeatures {params.hvg_nfeatures} \
+            --vars_to_regress "{params.vars_to_regress}" \
+            --scale_features "{params.scale_features}"
+
+
+        tmp="{output.done}.tmp"
+        echo ok > "$tmp"
+        mv -f "$tmp" "{output.done}"
+        """
+
+
+rule seurat_cluster_annot:
+    input:
+        norm_done="results/downstream/seurat/{trim_state}/{donor}/seurat_filt_normalized/seurat_filt_normalize.done"
+    output:
+        done="results/downstream/seurat/{trim_state}/{donor}/seurat_cluster_annot/seurat_cluster_annot.done",
+        rds="results/downstream/seurat/{trim_state}/{donor}/seurat_cluster_annot/{donor}_annotated_object.rds"
+    params:
+        # normalized object produced by qcfilt_normalize_seurat.R
+        seurat_rds=lambda wc: (
+            f"results/downstream/seurat/{wc.trim_state}/{wc.donor}/seurat_filt_normalized/"
+            f"{wc.donor}_qcfilt_norm_object.rds"
+        ),
+        markers="scripts/markers_pbmc.R",
+        outdir=lambda wc: f"results/downstream/seurat/{wc.trim_state}/{wc.donor}/seurat_cluster_annot",
+        # optional knobs (only include if you want config control now)
+        dims=lambda wc: int(config.get("seurat_annotation", {}).get("dims", 30)),
+        resolution=lambda wc: float(config.get("seurat_annotation", {}).get("resolution", 0.3)),
+        seed=lambda wc: int(config.get("seurat_annotation", {}).get("seed", 1)),
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p "{params.outdir}"
+
+        test -s "{params.seurat_rds}"
+        test -s "{params.markers}"
+
+        Rscript scripts/cell_clustering_and_annotation.R \
+            --seurat  "{params.seurat_rds}" \
+            --markers "{params.markers}" \
+            --outdir  "{params.outdir}" \
+            --donor   "{wildcards.donor}" \
+            --dims        {params.dims} \
+            --resolution  {params.resolution} \
+            --seed        {params.seed}
+        
+        # verify the declared output exists BEFORE declaring done
+        test -s "{output.rds}"
+
+        tmp="{output.done}.tmp"
+        echo ok > "$tmp"
+        mv -f "$tmp" "{output.done}"
+        """
+
+rule deg_and_tost:
+    input:
+        annot_done=lambda wc: [
+            f"results/downstream/seurat/{wc.trim_state}/{d}/seurat_cluster_annot/seurat_cluster_annot.done"
+            for d in DONORS
+        ],
+        seurat_rds=lambda wc: [
+            f"results/downstream/seurat/{wc.trim_state}/{d}/seurat_cluster_annot/{d}_annotated_object.rds"
+            for d in DONORS
+        ],
+        celltype_sets="scripts/celltype_sets.R",
+    output:
+        done="results/downstream/deg_and_tost/{trim_state}/deg_and_tost/deg_and_tost.done"
+    params:
+        outdir=lambda wc: f"results/downstream/deg_and_tost/{wc.trim_state}/deg_and_tost",
+        assay=lambda wc: str(config.get("deg_and_tost", {}).get("assay", "RNA")),
+        min_baseMean=lambda wc: int(config.get("deg_and_tost", {}).get("min_baseMean", 10)),
+        min_cells_per_group=lambda wc: int(config.get("deg_and_tost", {}).get("min_cells_per_group", 50)),
+        marker_padj=lambda wc: float(config.get("deg_and_tost", {}).get("marker_padj", 1e-10)),
+        marker_lfc=lambda wc: float(config.get("deg_and_tost", {}).get("marker_lfc", 3)),
+        equiv_alpha=lambda wc: float(config.get("deg_and_tost", {}).get("equiv_alpha", 0.05)),
+        equiv_delta=lambda wc: float(config.get("deg_and_tost", {}).get("equiv_delta", 0.75)),
+        seed=lambda wc: int(config.get("deg_and_tost", {}).get("seed", 42)),
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p "{params.outdir}"
+
+        SEURAT_CSV="$(printf "%s," {input.seurat_rds} | sed 's/,$//')"
+        test -n "$SEURAT_CSV"
+        test -s "{input.celltype_sets}"
+
+        Rscript scripts/pseudobulk_deg_tost_gsea.R \
+            --seurat "$SEURAT_CSV" \
+            --celltype_sets "{input.celltype_sets}" \
+            --outdir "{params.outdir}" \
+            --assay {params.assay} \
+            --min_baseMean {params.min_baseMean} \
+            --min_cells_per_group {params.min_cells_per_group} \
+            --marker_padj {params.marker_padj} \
+            --marker_lfc {params.marker_lfc} \
+            --equiv_alpha {params.equiv_alpha} \
+            --equiv_delta {params.equiv_delta} \
+            --seed {params.seed}
+
+        tmp="{output.done}.tmp"
+        echo ok > "$tmp"
+        mv -f "$tmp" "{output.done}"
+        """
