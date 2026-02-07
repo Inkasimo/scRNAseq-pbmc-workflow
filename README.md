@@ -245,7 +245,7 @@ Cross-donor
   |
   +-- pseudobulk by donor & cell type
   +-- DESeq2 (DE)
-  +-- TOST (equivalence / conserved)
+  +-- TOST (equivalence test)
   +-- enrichment (GSEA / ORA)
   |
   v
