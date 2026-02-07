@@ -169,95 +169,84 @@ This avoids reliance on unstable upstream URLs and ensures reproducible executio
 
 ## Workflow
 
-scRNA-seq PBMC Workflow (Docker + Snakemake + CLI wrapper)
-=========================================================
+### Exexution flow
+
+```text
 
 config/config.yaml
-    |
-    v
-run_analysis.py  (section runner)
-    |
-    v
-Snakemake DAG (workflow/Snakefile)
-    |
-    v
-Docker image (scrnaseq-workflow)
-    |
-    v
+        |
+        v
+run_analysis.py  (section-based CLI)
+        |
+        v
+Snakemake DAG
+        |
+        v
+Docker container
 
 
-UPSTREAM (engineering)
----------------------
+```
+
+### Upstream (engineering)
+
+```text
 
 FASTQs
   |
-  +--> (A) download (optional) --------------------+
-  |                                                |
-  +--> (B) validate presence (no download)          |
-                                                   v
-                                              FASTQs ready
-                                                   |
-                                                   v
-Raw QC
+  +-- download (optional)
   |
-  +--> FastQC (raw)
-  |
-  +--> MultiQC (raw)
+  +-- validate presence
   |
   v
-
-Trim (optional)
+QC (raw)
+  - FastQC
+  - MultiQC
   |
-  +--> Cutadapt
-  |
-  +--> FastQC (trimmed)
-  |
-  +--> MultiQC (trimmed)
+  +-- trim (optional)
+  |     |
+  |     v
+  |   QC (trimmed)
+  |     - FastQC
+  |     - MultiQC
   |
   v
-
 Reference
-  |
-  +--> genome FASTA + GTF (download if missing)
-  +--> whitelist present
-  +--> STAR index (build or validate existing)
+  - genome FASTA
+  - GTF
+  - barcode whitelist
+  - STAR index
   |
   v
-
 Alignment / Counting
-  |
-  +--> STARsolo (raw OR trimmed depending on mode)
-  +--> outputs: matrix.mtx + features.tsv + barcodes.tsv
-  |
-  v
+  - STARsolo
+  - gene x cell matrix
 
+```
 
-DOWNSTREAM (analysis)
---------------------
+### Downstream (analysis)
 
-Per-donor (run per donor)
-  |
-  +--> Seurat object + QC metrics/plots
-  +--> QC filtering (thresholds from qc_metrics.tsv)
-  +--> Normalization + HVGs + scaling
-  +--> Clustering + annotation (markers / module scores)
-  |
-  v
+```text
 
-Cross-donor (all donors together)
+Per-donor
   |
-  +--> pseudobulk by (donor × celltype-like group)
-  +--> DESeq2 (donor blocking) -> markers (strict)
-  +--> TOST equivalence -> conserved sets
-  +--> Enrichment: fgsea (ranked log2FC) + ORA (gene sets)
+  +-- Seurat object
+  +-- cell QC + filtering
+  +-- normalization + HVGs
+  +-- clustering + annotation
   |
   v
-
-Next (WIP)
+Cross-donor
   |
-  +--> Co-expression network analysis
+  +-- pseudobulk by donor & cell type
+  +-- DESeq2 (DE)
+  +-- TOST (equivalence / conserved)
+  +-- enrichment (GSEA / ORA)
+  |
+  v
+(Next)
+  - co-expression network analysis
 
-
+```
 
 ## Repository structure
 
