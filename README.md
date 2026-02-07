@@ -305,8 +305,6 @@ run_analysis.py      # Optional Python wrapper for section-based execution
 - Developer / maintainer notes (including environment maintenance,
 STAR indexing details, and Docker CPU behavior) are kept in
 `docs/DEVELOPER_NOTES.md` and are not required to run the workflow.
-
-
   
 ## Non-goals
 
