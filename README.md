@@ -179,10 +179,10 @@ config/config.yaml
 run_analysis.py  (section-based CLI)
         |
         v
-Snakemake DAG
+Docker container
         |
         v
-Docker container
+Snakemake DAG
 
 
 ```
