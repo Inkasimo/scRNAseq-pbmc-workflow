@@ -1,6 +1,8 @@
 # scRNA-seq PBMC Workflow
 
-Production-style scRNA-seq pipeline using **Docker + Snakemake**.
+**Work in progress**
+Production-style scRNA-seq analysis pipeline
+using **Docker + Snakemake** with a Python CLI wrapper.
 
 This repository is intended as a **technical portfolio / learning project**.
 
@@ -29,9 +31,9 @@ This repository is intended as a **technical portfolio / learning project**.
 
 - Seurat objects
 - Cell-level QC and annotation
-- Differential expression
+- Differential expression and TOST analysis
 - Enrichment analysis
-- Co-expression network analysis
+- Co-expression network analysis (work in progress)
 
 ## Requirements
 
@@ -47,6 +49,8 @@ All core tools are provided inside the Docker image, including:
 - MultiQC
 - Cutadapt
 - Seurat
+- DESeq2
+- igraph
 
 ### Optional (wrapper only)
 
@@ -161,6 +165,119 @@ The 10x Genomics barcode whitelist is bundled directly in the repository:
 
 
 This avoids reliance on unstable upstream URLs and ensures reproducible execution.
+
+## Workflow
+
+scRNA-seq PBMC Workflow (Docker + Snakemake + CLI wrapper)
+=========================================================
+
+                    +----------------------+
+                    |   config/config.yaml |
+                    +----------+-----------+
+                               |
+                               v
+                    +----------------------+
+                    |  run_analysis.py     |
+                    |  (section runner)    |
+                    +----------+-----------+
+                               |
+                               v
+                    +----------------------+
+                    |  Snakemake (DAG)     |
+                    |  workflow/Snakefile  |
+                    +----------+-----------+
+                               |
+   -------------------------------------------------------------------------
+   UPSTREAM (engineering)                                               
+   -------------------------------------------------------------------------
+
+  [FASTQs]
+    |-- download OR validate presence ------------------------------+
+    |                                                               |
+    v                                                               v
++------------------+                                       +------------------+
+| FastQC (raw)     |                                       | Cutadapt (opt)   |
++--------+---------+                                       +--------+---------+
+         |                                                          |
+         v                                                          v
++------------------+                                       +------------------+
+| MultiQC (raw)    |                                       | FastQC (trimmed) |
++--------+---------+                                       +--------+---------+
+                                                           | 
+                                                           v
+                                                  +------------------+
+                                                  | MultiQC (trimmed)|
+                                                  +--------+---------+
+
+  [REFERENCE]
+    |
+    |-- download genome+gtf (if needed)
+    |-- build STAR index (or validate existing)
+    |-- validate whitelist
+    v
++------------------------------+
+| Reference ready (STAR index) |
++---------------+--------------+
+                |
+                v
+
+  [ALIGNMENT / COUNTING]
+                |
+                v
++---------------------------------------------+
+| STARsolo (raw OR trimmed mode)              |
+| -> gene x cell count matrix (MTX+features+barcodes)
++----------------------+----------------------+
+                       |
+                       v
+
+   -------------------------------------------------------------------------
+   DOWNSTREAM (analysis)  (per donor, then cross-donor)
+   -------------------------------------------------------------------------
+
+  Per-donor:
+    v
++------------------------------+
+| Build Seurat object + QC     |
+| (CreateSeuratObject, QC plots|
+|  qc_metrics.tsv)             |
++---------------+--------------+
+                |
+                v
++------------------------------+
+| QC filter + normalization    |
+| NormalizeData + HVGs + Scale |
++---------------+--------------+
+                |
+                v
++------------------------------+
+| Clustering + annotation      |
+| (markers / module scores)    |
++---------------+--------------+
+                |
+                v
+
+  Cross-donor (all donors together):
+                v
++----------------------------------------------+
+| Pseudobulk by donor x cell-type-like group   |
+| -> DESeq2 (donor blocking)                   |
+| -> Markers (strict)                          |
+| -> TOST equivalence (conserved)              |
++----------------------+-----------------------+
+                       |
+                       v
++----------------------------------------------+
+| Enrichment                                    |
+| - GSEA (fgsea) on ranked log2FC               |
+| - ORA (clusterProfiler enricher) on gene sets |
++----------------------------------------------+
+
+  (Next)
++----------------------------------------------+
+| Co-expression network analysis (WIP)          |
++----------------------------------------------+
+
 
 ## Repository structure
 
