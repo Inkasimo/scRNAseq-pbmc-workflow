@@ -20,7 +20,7 @@ option_list <- list(
   make_option("--seurat", type="character", help="Comma-separated list of annotated Seurat RDS files (one per donor)."),
   make_option("--outdir", type="character", help="Output directory."),
   make_option("--celltype_sets", type="character", default="scripts/celltype_sets.R",
-              "Path to scripts/celltype_sets.R defining deg_sets (or celltype_sets) (named list)."),
+            help="Path to scripts/celltype_sets.R defining deg_sets (or celltype_sets) (named list)."),
   make_option("--markers", type="character", default="",
               help="Optional: path to scripts/markers_pbmc.R defining markers_pbmc (named list)."),
   make_option("--donor_names", type="character", default="",
@@ -455,7 +455,9 @@ for (set_name in names(ct_sets)) {
     next
   }
 
-  cons <- cons %>% mutate(weight = median_cor) %>% select(from, to, weight, support)
+  cons0 <- cons %>% mutate(weight = median_cor) %>% select(from, to, weight, support)
+  cons <- cons0
+
 
   g <- igraph::graph_from_data_frame(
     cons %>% select(from, to, weight),
@@ -466,8 +468,20 @@ for (set_name in names(ct_sets)) {
   g <- keep_largest_cc(g)
 
   cons <- igraph::as_data_frame(g, what = "edges")
-
   if ("weight" %in% names(cons)) names(cons)[names(cons) == "weight"] <- "cor"
+
+  # add support back (because igraph edges currently only have weight/cor)
+  cons <- cons %>%
+    mutate(a = pmin(from, to), b = pmax(from, to)) %>%
+    select(a, b, cor) %>%
+    left_join(
+      cons0 %>%
+        mutate(a = pmin(from, to), b = pmax(from, to)) %>%
+        select(a, b, support),
+      by = c("a", "b")
+    ) %>%
+    select(from = a, to = b, cor, support)
+
 
   saveRDS(g, file = file.path(out_set, "graph_consensus.rds"))
 
