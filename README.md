@@ -23,7 +23,7 @@ Draft — core pipeline implemented; downstream analyses in progress
 
 ### Upstream
 
-- FASTQ validation or download
+- FASTQ acquisition (download or reuse of existing data)
 - Raw and optional trimmed QC (FastQC + MultiQC)
 - Optional read trimming (Cutadapt; non-default)
 - Reference preparation (barcode whitelist, STAR index)
