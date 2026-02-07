@@ -297,6 +297,10 @@ run_analysis.py      # Optional Python wrapper for section-based execution
 - Biological analyses are included to validate 
   pipeline correctness and demonstrate statistically coherent downstream usage, 
   not to claim novel biological findings.
+- R package versions inside the Docker image are managed with `renv`
+  to ensure reproducible R environments.
+  Users do not need to interact with `renv` directly.
+
   
 ## Non-goals
 
