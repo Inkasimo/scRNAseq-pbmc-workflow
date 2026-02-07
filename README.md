@@ -300,6 +300,10 @@ run_analysis.py      # Optional Python wrapper for section-based execution
 - R package versions inside the Docker image are managed with `renv`
   to ensure reproducible R environments.
   Users do not need to interact with `renv` directly.
+- Developer / maintainer notes (including environment maintenance,
+STAR indexing details, and Docker CPU behavior) are kept in
+`docs/DEVELOPER_NOTES.md` and are not required to run the workflow.
+
 
   
 ## Non-goals
