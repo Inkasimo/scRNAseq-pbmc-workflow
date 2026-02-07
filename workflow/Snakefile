@@ -5,7 +5,7 @@ from snakemake.io import directory
 from snakemake.shell import shell
 
 
-# CONFIG
+# CONFIG / GLOBAL CONSTANTS
 
 configfile: "config/config.yaml"
 
@@ -19,8 +19,9 @@ TRIM_R2_ADAPTER = str(config.get("trim", {}).get("adapter_r2", "AGATCGGAAGAG"))
 TRIM_R2_QUAL = int(config.get("trim", {}).get("q_r2", 20))
 TRIM_R2_MINLEN = int(config.get("trim", {}).get("minlen_r2", 20))
 
-# Canonical → legacy mapping (DO NOT change legacy folders)
-# This is because I realized starsolo also has "raw"
+# Canonical → legacy path mapping (DO NOT change legacy folder names)
+# STARsolo uses "raw" internally; preserve on-disk layout for compatibility
+
 LEGACY_BRANCH = {
     "untrimmed": "raw",
     "trimmed": "trimmed"
@@ -43,6 +44,9 @@ def touch_done_atomic(done_path: str):
         f.write("ok\n")
     os.replace(tmp, done_path)
 
+
+# Config overrides (CLI > config.yaml)
+
 def as_bool(x, default=False):
     if x is None:
         return default
@@ -61,27 +65,16 @@ BUILD_STAR_INDEX = as_bool(config.get("build_star_index", None),
                            default=as_bool(config.get("ref", {}).get("build_star_index", True)))
 
 
+# Trim mode helpers (raw vs trimmed execution branches. Cutadapt)
 def mode():
     return "trimmed" if trim_enabled() else "raw"
 
-#dont use
-#def fastq_dir(donor):
-    #return f"data/trimmed/{donor}" if trim_enabled() else config["pbmc"][donor]["fastq_dir"]
 
 def starsolo_root():
     return f"results/alignment/starsolo/{mode()}"
 
-#Dont use
-#def lane_fastqs(donor, read):
-    #fqdir = fastq_dir(donor)
-    #pattern = f"{fqdir}/*_{read}_*.fastq.gz"
-    #files = sorted(glob.glob(pattern))
-    #if not files:
-        #raise ValueError(f"No {read} FASTQs found for {donor} with pattern: {pattern}")
-    #return files
-
 def trim_enabled():
-    # CLI override takes precedence
+     # CLI override takes precedence
     if "trim_enabled" in config:
         v = config["trim_enabled"]
         if isinstance(v, str):
@@ -96,13 +89,7 @@ def is_trimmed():
 
 def starsolo_done(donor, mode):
     return f"results/alignment/starsolo/{mode}/{donor}/starsolo.done"
-#Dont use  
-#def lane_fastqs_from_dir(fqdir, read):
-    #pattern = f"{fqdir}/*_{read}_*.fastq.gz"
-    #files = sorted(glob.glob(pattern))
-    #if not files:
-        #raise ValueError(f"No {read} FASTQs found with pattern: {pattern}")
-    #return files
+
 
 def resolve_fastq_dir(donor):
     base = config["pbmc"][donor].get("fastq_base", config["pbmc"][donor].get("fastq_dir"))
