@@ -323,7 +323,7 @@ results/
 │   │   └── untrimmed/
 │   │       └── deg_and_tost/
 │   └── networks/
-│       └── test/
+│       └── untrimmed/
 │           ├── consensus/
 │           ├── per_donor/
 │           ├── plots/
