@@ -118,19 +118,18 @@ opt <- list(
   # ---- network defaults ----
   metacell_input = "linear_then_log",        # or "log"
   min_cells_per_donor_group = 200,
-  metacell_size = 20,
-  seed = 1,
+  metacell_size = 30,
+  seed = 42,
   gene_detect_frac = 0.05,
   hvg_n = 5000,
   cor_method = "spearman",
   positive_only = TRUE,
   top_k = 100,
-  min_abs_cor = 0.0,
-  consensus_min_donors = 3,
+  min_abs_cor = 0.15,
+  consensus_min_donors = 2,
   require_same_sign = TRUE,
   leiden_resolution = 1.0,
-
-  done = "network.done"
+  deg_tables_dir ="results/downstream/deg_and_tost/untrimmed/deg_and_tost/tables"
 )
 
 str(opt)

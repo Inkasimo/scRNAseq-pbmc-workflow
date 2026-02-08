@@ -401,10 +401,15 @@ for (set_name in names(ct_sets)) {
 
   out_set <- file.path(opt$outdir, "consensus", set_name)
   out_per <- file.path(opt$outdir, "per_donor", set_name)
-  out_plot <- file.path(opt$outdir, "plots")
+
+  plots_set   <- file.path(opt$outdir, "plots", set_name)
+  plots_donor <- file.path(plots_set, "per_donor")
+  
   dir.create(out_set, recursive=TRUE, showWarnings=FALSE)
   dir.create(out_per, recursive=TRUE, showWarnings=FALSE)
-  
+  dir.create(plots_set, recursive=TRUE, showWarnings=FALSE)
+  dir.create(plots_donor, recursive=TRUE, showWarnings=FALSE)
+
   # Collect donor edge lists
   donor_edges <- list()
   donor_genes <- list()
@@ -482,7 +487,7 @@ for (set_name in names(ct_sets)) {
 
   plot_hist_png(
     ed$cor,
-    file.path(out_plot, sprintf("%s_edge_weight_hist_sparsified_%s.png", set_name, d)),
+    file.path(plots_donor, sprintf("edge_weight_hist_sparsified_%s.png", d)),
     main=sprintf("%s / %s: donor %s edge weights (sparsified)", set_name, label_col, d),
     xlab="cor"
   )
@@ -511,7 +516,7 @@ for (set_name in names(ct_sets)) {
 
     plot_hist_png(
       ed2$cor,
-      file.path(out_per, sprintf("edge_weight_hist_postLCC_%s.png", d)),
+      file.path(plots_donor, sprintf("edge_weight_hist_postLCC_%s.png", d)),
       main=sprintf("%s: donor %s edge weights (post donor-LCC)", set_name, d),
       xlab="cor"
     )
@@ -565,14 +570,14 @@ for (set_name in names(ct_sets)) {
   
   plot_hist_png(
     all_ed$median_cor,
-    file.path(out_plot, sprintf("%s_consensus_hist_median_cor_ALL_edges.png", set_name)),
+    file.path(plots_set, "consensus_hist_median_cor_ALL_edges.png"),
     main=sprintf("%s: ALL edges median_cor (before support/sign filters)", set_name),
     xlab="median_cor"
   )
 
   plot_support_png(
     all_ed$support,
-    file.path(out_plot, sprintf("%s_consensus_bar_support_ALL_edges.png", set_name)),
+    file.path(plots_set, "consensus_bar_support_ALL_edges.png"),
     main=sprintf("%s: ALL edges support (before filters)", set_name)
   )
 
@@ -594,19 +599,6 @@ for (set_name in names(ct_sets)) {
     next
   }
 
-
- plot_hist_png(
-  cons$median_cor,
-  file = file.path(out_set, "edge_weight_raw.png"),
-  main = paste0(set_name, " consensus raw weight"),
-  xlab = "median cor"
-)
-
-plot_support_png(
-  cons$support,
-  file = file.path(out_set, "edge_support.png"),
-  main = paste0(set_name, " edge support")
-)
 
 
   cons0 <- cons %>% mutate(weight = median_cor) %>% select(from, to, weight, support)
@@ -648,23 +640,17 @@ plot_support_png(
   edges_consensus_postLCC <- nrow(cons)
   plot_hist_png(
     cons$cor,
-    file.path(out_plot, sprintf("%s_consensus_hist_cor_FINAL_postLCC.png", set_name)),
+    file.path(plots_set, "consensus_hist_cor_FINAL_postLCC.png"),
     main=sprintf("%s: FINAL consensus edge weights (post consensus-LCC)", set_name),
     xlab="cor"
   )
 
   plot_support_png(
     cons$support,
-    file.path(out_plot, sprintf("%s_consensus_bar_support_FINAL_postLCC.png", set_name)),
+    file.path(plots_set, "consensus_bar_support_FINAL_postLCC.png"),
     main=sprintf("%s: FINAL consensus support (post consensus-LCC)", set_name)
   )
 
-  plot_hist_png(
-  cons$weight_consensus,
-  file = file.path(out_set, "edge_weight_consensus.png"),
-  main = paste0(set_name, " consensus weighted"),
-  xlab = "consensus weight"
-)
 
   saveRDS(g, file = file.path(out_set, "graph_consensus.rds"))
 
