@@ -290,6 +290,53 @@ scripts/             # R-scripts and helpers
 run_analysis.py      # Optional Python wrapper for section-based execution
 ```
 
+## Representative Results Directory Layout (Example Run)
+
+```text
+results/
+├── qc/
+│   ├── fastqc/
+│   │   └── raw/
+│   │       ├── donor1/
+│   │       ├── donor2/
+│   │       ├── donor3/
+│   │       └── donor4/
+│   └── multiqc/
+│       └── raw/
+│           ├── multiqc_report.html
+│           └── multiqc_report_data/
+├── alignment/
+│   └── starsolo/
+│       └── raw/
+│           ├── donor1/
+│           ├── donor2/
+│           ├── donor3/
+│           └── donor4/
+├── downstream/
+│   ├── seurat/
+│   │   └── untrimmed/
+│   │       ├── donor1/
+│   │       ├── donor2/
+│   │       ├── donor3/
+│   │       └── donor4/
+│   ├── deg_and_tost/
+│   │   └── untrimmed/
+│   │       └── deg_and_tost/
+│   └── networks/
+│       └── test/
+│           ├── consensus/
+│           ├── per_donor/
+│           ├── plots/
+│           └── tables/
+└── logs/
+    ├── qc/
+    ├── alignment/
+    ├── download/
+    └── ref/
+
+
+```
+
 
 ## Notes
 - Large data files are excluded via `.gitignore`
@@ -302,9 +349,13 @@ run_analysis.py      # Optional Python wrapper for section-based execution
 - R package versions inside the Docker image are managed with `renv`
   to ensure reproducible R environments.
   Users do not need to interact with `renv` directly.
+-A representative execution artifact (multiqc_report.html) has been copied to 
+ docs/example_outputs/ as a lightweight proof of pipeline execution; full outputs remain 
+ under results/ and are not version-controlled.
 - Developer / maintainer notes (including environment maintenance,
 STAR indexing details, and Docker CPU behavior) are kept in
 `docs/DEVELOPER_NOTES.md` and are not required to run the workflow.
+
   
 ## Non-goals
 
