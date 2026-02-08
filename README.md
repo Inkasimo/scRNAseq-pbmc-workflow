@@ -81,10 +81,10 @@ This workflow can be run in **two ways**:
 
 Most users should use the **wrapper**. 
 
-## Option A: Python wrapper (recommended)
+### Option A: Python wrapper (recommended)
 
 
-### Wrapper requirements (host-side only)
+#### Wrapper requirements (host-side only)
 
 ```bash
 pip install -r wrapper-requirements.txt
@@ -95,32 +95,32 @@ This installs:
 If you do not use the wrapper, you can ignore this step entirely.
 
 
+#### Example runs
+
 ****Inspect available sections:****
 
 ```bash
 python3 run_analysis.py --list-sections
 ```
 
-### Inspect donors:
+****Inspect donors:****
 
 ```bash
 python3 run_analysis.py --list-donors
 ```
-### Example runs
 
-#### Download data:
+****Download data:****
 
 ```bash
 python3 run_analysis.py download_data --cpus 8 --cores 8
 ```
-
-#### QC only:
+****QC only:****
 
 ```bash
 python3 run_analysis.py qc --cpus 8 --cores 8
 ```
 
-#### Align all donors:
+****Align all donors:****
 
 ```bash
 python3 run_analysis.py align \
@@ -131,7 +131,7 @@ python3 run_analysis.py align \
 
 ```
 
-#### Dry run (no execution, sanity check):
+****Dry run (no execution, sanity check):****
 
 ```bash
 python3 run_analysis.py all --dry-run
@@ -149,7 +149,7 @@ python3 run_analysis.py all --trimmed
 
 ### Option B: Direct Snakemake (no wrapper)
 
-#### Dry run
+****Dry run****
 
 ```bash
 docker run --rm -it \
@@ -160,7 +160,7 @@ docker run --rm -it \
   ```
 
 
-#### Run a specific target (example: one donor alignment):
+****Run a specific target (example: one donor alignment):****
 
 ```bash
 docker run --rm -it \
@@ -172,6 +172,7 @@ docker run --rm -it \
   ```
   
 ## Resources and reproducibility
+
 ### Barcode whitelist
 
 The 10x Genomics barcode whitelist is bundled directly in the repository:
