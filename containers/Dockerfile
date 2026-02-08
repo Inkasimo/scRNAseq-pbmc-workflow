@@ -1,6 +1,10 @@
 FROM rocker/r-ver:4.3.3
-ENV DEBIAN_FRONTEND=noninteractive
 
+LABEL maintainer="Inkasimo" \
+      org.opencontainers.image.notes="No data were harmed in the making of this pipeline. You know the rules." \
+      org.opencontainers.image.documentation="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+
+ENV DEBIAN_FRONTEND=noninteractive
 ENV RENV_CONFIG_REPOS_OVERRIDE=https://packagemanager.posit.co/cran/2024-01-01
 ENV RENV_PATHS_LIBRARY=/opt/renv/library
 ENV RENV_PATHS_CACHE=/opt/renv/cache
