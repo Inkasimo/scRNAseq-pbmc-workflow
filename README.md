@@ -312,9 +312,14 @@ STAR indexing details, and Docker CPU behavior) are kept in
 
 ## Data availability (planned)
 
-Once the workflow is finalized, a complete snapshot of representative results
-(including STARsolo alignment outputs and downstream analysis output data)
-will be archived on Zenodo with a DOI.
+Once the workflow is finalized, a stable snapshot of representative results will be archived on Zenodo with a DOI.
+
+This archive will include:
+- Representative output data produced by the full pipeline (alignment and downstream analysis).
+- A small toy dataset (downsampled FASTQs) intended for demonstration and pipeline sanity-check runs only.
+
+At the time of final release, the Docker image used to generate the archived results will also be published and referenced explicitly, 
+ensuring reproducible execution of the archived snapshot.
 
 
 ## Citation

@@ -96,3 +96,41 @@ docker run --rm -it \
   -w /work \
   scrnaseq-workflow \
   bash
+  
+  
+  # Mock opt object for interactive testing (RStudio / docker shell)
+
+opt <- list(
+  seurat = paste(
+    "results/downstream/seurat/untrimmed/donor1/seurat_cluster_annot/donor1_annotated_object.rds",
+    "results/downstream/seurat/untrimmed/donor2/seurat_cluster_annot/donor2_annotated_object.rds",
+    "results/downstream/seurat/untrimmed/donor3/seurat_cluster_annot/donor3_annotated_object.rds",
+    "results/downstream/seurat/untrimmed/donor4/seurat_cluster_annot/donor4_annotated_object.rds",
+    sep = ","
+  ),
+
+  outdir = "results/downstream/networks/test",
+
+  celltype_sets = "scripts/celltype_sets.R",
+  markers = "scripts/markers_pbmc.R",
+  donor_names = "donor1,donor2,donor3,donor4",
+
+  # ---- network defaults ----
+  metacell_input = "linear_then_log",        # or "log"
+  min_cells_per_donor_group = 200,
+  metacell_size = 20,
+  seed = 1,
+  gene_detect_frac = 0.05,
+  hvg_n = 5000,
+  cor_method = "spearman",
+  positive_only = TRUE,
+  top_k = 100,
+  min_abs_cor = 0.0,
+  consensus_min_donors = 3,
+  require_same_sign = TRUE,
+  leiden_resolution = 1.0,
+
+  done = "network.done"
+)
+
+str(opt)
