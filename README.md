@@ -350,8 +350,8 @@ results/
   to ensure reproducible R environments.
   Users do not need to interact with `renv` directly.
 - A representative execution artifact (multiqc_report.html) has been copied to 
- docs/example_outputs/ as a lightweight proof of pipeline execution; full outputs remain 
- under results/ and are not version-controlled.
+ docs/example_outputs/ as a lightweight proof of pipeline execution (open locally in a browser after cloning);
+ full outputs remain under results/ and are not version-controlled.
 - Developer / maintainer notes (including environment maintenance,
 STAR indexing details, and Docker CPU behavior) are kept in
 `docs/DEVELOPER_NOTES.md` and are not required to run the workflow.
