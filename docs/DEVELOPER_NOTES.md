@@ -133,3 +133,6 @@ opt <- list(
 )
 
 str(opt)
+
+
+## Maybe add MSigDB C7 (immunologic signatures) to enrichment at some point

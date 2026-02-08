@@ -5,6 +5,10 @@ using **Docker + Snakemake** with a Python CLI wrapper.
 
 This repository is intended as a **technical portfolio / learning project**.
 
+Representative execution artifacts (MultiQC report and a few selected downstream plots)
+are included under `docs/example_outputs/` as lightweight evidence of successful pipeline execution.
+Full outputs are written to `results/` and are intentionally not version-controlled.
+
 ## Status:
 Draft — core pipeline implemented; downstream analyses in progress
 
@@ -350,12 +354,9 @@ results/
 - R package versions inside the Docker image are managed with `renv`
   to ensure reproducible R environments.
   Users do not need to interact with `renv` directly.
-- Representative execution artifacts (MultiQC report and a few selected downstream plots)
-  are included under `docs/example_outputs/` as lightweight evidence of successful pipeline execution.
-  Full outputs are written to `results/` and are intentionally not version-controlled..
 - Developer / maintainer notes (including environment maintenance,
-STAR indexing details, and Docker CPU behavior) are kept in
-`docs/DEVELOPER_NOTES.md` and are not required to run the workflow.
+  STAR indexing details, and Docker CPU behavior) are kept in
+  `docs/DEVELOPER_NOTES.md` and are not required to run the workflow.
 
   
 ## Non-goals
