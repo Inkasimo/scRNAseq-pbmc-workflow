@@ -349,7 +349,7 @@ results/
 - R package versions inside the Docker image are managed with `renv`
   to ensure reproducible R environments.
   Users do not need to interact with `renv` directly.
--A representative execution artifact (multiqc_report.html) has been copied to 
+- A representative execution artifact (multiqc_report.html) has been copied to 
  docs/example_outputs/ as a lightweight proof of pipeline execution; full outputs remain 
  under results/ and are not version-controlled.
 - Developer / maintainer notes (including environment maintenance,
