@@ -226,6 +226,30 @@ plot_support_png <- function(s, file,
   dev.off()
 }
 
+plot_module_sizes <- function(modules, out_png, title) {
+  tab <- table(modules$module)
+  df <- data.frame(
+    module = as.integer(names(tab)),
+    size = as.integer(tab)
+  )
+
+  png(out_png, width = 900, height = 600)
+  par(mar = c(5, 5, 4, 2))
+  barplot(
+    df$size,
+    names.arg = df$module,
+    las = 2,
+    col = "grey80",
+    border = "grey40",
+    ylab = "Number of genes",
+    xlab = "Module ID",
+    main = title
+  )
+  abline(h = median(df$size), lwd = 2)
+  dev.off()
+
+  return(df)
+}
 
 
 ora_hallmark <- function(genes, universe, hallmark_df) {
@@ -666,6 +690,20 @@ for (set_name in names(ct_sets)) {
     gene = names(memb),
     module = as.integer(memb),
     stringsAsFactors = FALSE
+  )
+
+  mod_sizes <- plot_module_sizes(
+    modules,
+    out_png = file.path(out_set, "module_size_distribution.png"),
+    title = paste0(set_name, ": module size distribution (consensus)")
+  )
+
+  write.table(
+    mod_sizes,
+    file = file.path(out_set, "module_sizes.tsv"),
+    sep = "\t",
+    row.names = FALSE,
+    quote = FALSE
   )
 
   # Node metrics + annotations
