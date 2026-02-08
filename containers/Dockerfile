@@ -2,7 +2,7 @@ FROM rocker/r-ver:4.3.3
 
 LABEL maintainer="Inkasimo" \
       org.opencontainers.image.notes="No data were harmed in the making of this pipeline. You know the rules." \
-      org.opencontainers.image.documentation="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+      org.opencontainers.image.documentation="https://youtu.be/FYJ1dbyDcrI?si=zpFYOSwQx9gtD6sC&t=5"
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV RENV_CONFIG_REPOS_OVERRIDE=https://packagemanager.posit.co/cran/2024-01-01
