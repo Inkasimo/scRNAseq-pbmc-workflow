@@ -5,12 +5,11 @@ using **Docker + Snakemake** with a Python CLI wrapper.
 
 This repository is intended as a **technical portfolio / learning project**.
 
-Representative execution artifacts (MultiQC report and a few selected downstream plots)
-are included under `docs/example_outputs/` as lightweight evidence of successful pipeline execution.
-Full outputs are written to `results/` and are intentionally not version-controlled.
-
 ## Status:
-Draft — core pipeline implemented; downstream analyses in progress
+- Draft — core pipeline implemented; downstream analyses in progress.
+- Representative execution artifacts (MultiQC report and a few selected downstream plots)
+  are included under `docs/example_outputs/` as lightweight evidence of successful pipeline execution.
+  Full outputs are written to `results/` and are intentionally not version-controlled.
 
 ## Focus
 - Reproducible execution
