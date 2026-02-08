@@ -7,9 +7,10 @@ This repository is intended as a **technical portfolio / learning project**.
 
 ## Status:
 - Draft — core pipeline implemented; downstream analyses in progress.
-- Representative execution artifacts (MultiQC report and a few selected downstream plots)
-  are included under `docs/example_outputs/` as lightweight evidence of successful pipeline execution.
-  Full outputs are written to `results/` and are intentionally not version-controlled.
+- A small set of representative execution artifacts 
+ (MultiQC report and selected downstream plots) is included under `docs/example_outputs/`
+ as lightweight proof of successful execution. Full outputs are written to `results/`
+ and are intentionally not version-controlled.
 
 ## Focus
 - Reproducible execution
@@ -272,26 +273,27 @@ Cross-donor
 ## Repository structure
 
 ```text
-containers/          # Dockerfile(s) for reproducible execution
-workflow/            # Snakemake workflow (rules, DAG)
-config/              # User-editable configuration (config.yaml)
+containers/           # Dockerfile(s) for reproducible execution
+workflow/             # Snakemake workflow (rules, DAG)
+config/               # User-editable configuration (config.yaml)
 resources/            # Static resources bundled with the workflow
   barcodes/           # 10x barcode whitelist(s)
-data/                # Input data and references (not versioned)
+data/                 # Input data and references (not versioned)
   raw/                # FASTQ files (downloaded or user-provided)
   ref/                # Reference genome, GTF, STAR index
   trimmed/            # Trimmed FASTQ files (generated only if read trimming is enabled)
-results/             # Outputs and logs (not versioned)
+results/              # Outputs and logs (not versioned)
   qc/                 # FastQC / MultiQC reports
-  alignment/           # STARsolo outputs
-  logs/                # Execution logs
+  alignment/          # STARsolo outputs
+  logs/               # Execution logs
   downstream/         # Downstream analysis results
-	/deg_and_tost     # DEG and TOST analysis results
-	/seurat           # Seurat objects and related plots and tables
-	/networks         # Network analysis results (Work in progress)
-docs/                # Documentation (user manual, report, notes)
-scripts/             # R-scripts and helpers
-run_analysis.py      # Optional Python wrapper for section-based execution
+	deg_and_tost/     # DEG and TOST analysis results
+	seurat/           # Seurat objects and related plots and tables
+	networks/         # Network analysis results (Work in progress)
+docs/                 # Documentation (user manual, report, notes)
+  example_outputs/    # A small set of representative execution artifacts
+scripts/              # R-scripts and helpers
+run_analysis.py       # Optional Python wrapper for section-based execution
 ```
 
 ## Representative Results Directory Layout (Example Run)
