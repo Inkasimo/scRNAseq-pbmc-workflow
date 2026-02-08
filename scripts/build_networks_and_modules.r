@@ -251,6 +251,45 @@ plot_module_sizes <- function(modules, out_png, title) {
   return(df)
 }
 
+plot_enrichment_bubble <- function(enr_df, out_png, title,
+                                   max_terms = 10) {
+  if (is.null(enr_df) || nrow(enr_df) == 0) return(NULL)
+
+  df <- enr_df %>%
+    mutate(
+      neglog10_padj = -log10(p.adjust),
+      term = Description
+    ) %>%
+    group_by(module) %>%
+    slice_min(order_by = p.adjust, n = max_terms) %>%
+    ungroup()
+
+  png(out_png, width = 1000, height = 700)
+  par(mar = c(8, 5, 4, 2))
+
+  plot(
+    x = df$module,
+    y = df$neglog10_padj,
+    cex = scales::rescale(df$Count, to = c(1.5, 6)),
+    pch = 21,
+    bg = "grey70",
+    xlab = "Module",
+    ylab = "-log10(adj p-value)",
+    main = title
+  )
+
+  text(
+    x = df$module,
+    y = df$neglog10_padj,
+    labels = df$term,
+    pos = 3,
+    cex = 0.6,
+    srt = 45
+  )
+
+  dev.off()
+}
+
 
 ora_hallmark <- function(genes, universe, hallmark_df) {
   term2gene <- hallmark_df %>% dplyr::transmute(term = gs_name, gene = gene_symbol)
@@ -799,6 +838,13 @@ if (length(deg_conserved) > 0) {
       file=file.path(out_set, "enrichment_hallmark_ora.tsv"),
       sep="\t", row.names=FALSE, quote=FALSE
     )
+
+    plot_enrichment_bubble(
+      enr_tbl,
+      out_png = file.path(out_set, "enrichment_hallmark_bubble.png"),
+      title = paste0(set_name, ": Hallmark enrichment by module")
+    )
+
   }
 
   # Optional: ORA with marker sets as "gene sets" (module -> enrichment in marker sets)
@@ -828,6 +874,11 @@ if (length(deg_conserved) > 0) {
       write.table(ms_tbl,
         file=file.path(out_set, "enrichment_marker_sets_ora.tsv"),
         sep="\t", row.names=FALSE, quote=FALSE
+      )
+      plot_enrichment_bubble(
+        ms_tbl,
+        out_png = file.path(out_set, "enrichment_marker_sets_bubble.png"),
+        title = paste0(set_name, ": marker-set enrichment by module")
       )
     }
   }
