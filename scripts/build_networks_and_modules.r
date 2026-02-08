@@ -828,9 +828,16 @@ if (length(deg_conserved) > 0) {
   }
 
   # Write Gephi tables
-  write.table(nodes, file=file.path(out_set, "nodes.tsv"), sep="\t", row.names=FALSE, quote=FALSE)
-  
-  write.table(
+  # Nodes
+  write.csv(
+    nodes,
+    file = file.path(out_set, "nodes.csv"),
+    row.names = FALSE,
+    quote = TRUE
+  )
+
+  # Edges
+  write.csv(
     cons %>%
       transmute(
         from,
@@ -840,12 +847,18 @@ if (length(deg_conserved) > 0) {
         support_frac,
         weight_consensus
       ),
-    file = file.path(out_set, "edges.tsv"),
-    sep = "\t", row.names = FALSE, quote = FALSE
+    file = file.path(out_set, "edges.csv"),
+    row.names = FALSE,
+    quote = TRUE
   )
 
-
-  write.table(modules, file=file.path(out_set, "modules.tsv"), sep="\t", row.names=FALSE, quote=FALSE)
+  # Modules
+  write.csv(
+    modules,
+    file = file.path(out_set, "modules.csv"),
+    row.names = FALSE,
+    quote = TRUE
+  )
 
   # Enrichment per module (Hallmark ORA)
   enr_list <- list()
@@ -913,7 +926,7 @@ if (length(deg_conserved) > 0) {
         out_png    = file.path(out_set, "enrichment_marker_sets_dotplot.png"),
         top_n_per_module = 6,
         padj_max = 0.10
-      )
+     )
 
     }
   }

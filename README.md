@@ -95,7 +95,7 @@ This installs:
 If you do not use the wrapper, you can ignore this step entirely.
 
 
-### Inspect available sections:
+****Inspect available sections:****
 
 ```bash
 python3 run_analysis.py --list-sections
