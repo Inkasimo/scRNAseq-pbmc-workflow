@@ -717,3 +717,58 @@ Results depend heavily on how you define coarse groups and contrasts in celltype
 Donors lacking enough cells in a group are excluded from that group/contrast.
 
 Symbol-only pathway enrichment is the default assumption (hence dropping symbol-less ENSG rows unless mapped).
+
+# Networks
+
+Module detection was performed using the median gene–gene correlation across donors (median_cor) as the edge weight.
+This choice ensures that Leiden clustering reflects the intrinsic co-expression structure of the network, 
+rather than conflating biological coupling with donor-level reproducibility.
+
+Donor support was handled separately by (i) requiring edges to be observed in a minimum number of donors and (ii)
+computing a support-scaled consensus weight (weight_consensus = median_cor × support_fraction) for visualization and edge prioritization.
+
+This separation avoids biasing module boundaries toward highly stable but potentially non-specific interactions, 
+while still allowing donor reproducibility to be incorporated in downstream analyses and visualization.
+
+For each predefined cell-type set, gene co-expression networks were constructed independently per donor 
+and then combined into a cross-donor consensus network.
+
+Expression aggregation (metacells).
+Within each donor × cell-type set, cells were randomly pooled into metacells (default size 20) 
+to reduce single-cell noise and stabilize correlation estimates. Correlations were computed on log-scale 
+expression (either directly from log-normalized data or after linear pooling followed by log1p, depending on the selected mode).
+
+Gene selection and filtering.
+Genes were required to be detected in a minimum fraction of metacells (default 5%). 
+From these, highly variable genes (HVGs; default 3000) were used for network inference to focus on
+ informative variation and reduce computational burden.
+
+Edge definition and sparsification.
+Gene–gene association was defined as Spearman (or Pearson) 
+correlation across metacells. To obtain a sparse and interpretable graph, edges were 
+retained using a top-k per gene strategy (default 25 strongest partners per gene) combined with
+ an absolute correlation threshold (default |cor| ≥ 0.25). Optionally, only positive correlations were kept.
+
+Per-donor graph cleanup.
+Each donor network was simplified to remove duplicates/loops and reduced to its 
+largest connected component (LCC) to avoid fragmentation artifacts in downstream clustering and visualization.
+
+Cross-donor consensus construction.
+Consensus edges were obtained by stacking donor edge lists and summarizing each gene pair by:
+
+support = number of donors in which the edge appears
+
+median_cor = median correlation across supporting donors
+Optionally, edges were required to have consistent sign across donors. 
+Only edges supported by at least a minimum number of donors (default ≥3) were retained.
+ The resulting consensus network was again restricted to its LCC.
+
+Separation of “strength” vs “reproducibility”.
+Two edge weights were carried forward with distinct purposes:
+
+median_cor captures biological coupling strength and is used as the Leiden clustering weight (modules are driven by co-expression structure).
+
+weight_consensus = median_cor × support_fraction captures stability-adjusted edge importance and is used for edge ranking and visualization, without biasing module boundaries toward high-support but potentially non-specific edges.
+
+Module detection and annotation.
+Modules were detected with Leiden clustering on the consensus graph using edge weights = median_cor. Node tables include centrality metrics (degree, betweenness) and optional DEG/marker annotations; module gene sets were tested for pathway enrichment using MSigDB Hallmark ORA.

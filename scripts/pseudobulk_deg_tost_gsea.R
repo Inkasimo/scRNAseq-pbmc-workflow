@@ -616,6 +616,12 @@ write.table(
 )
 
 write.table(
+  data.frame(gene = conserved_any),
+  file = file.path(opt$outdir, "tables", "conserved_any_contrasts.tsv"),
+  sep = "\t", row.names = FALSE, quote = FALSE
+)
+
+write.table(
   data.frame(gene = markers_any),
   file = file.path(opt$outdir, "tables", "markers_any_contrast.tsv"),
   sep = "\t", row.names = FALSE, quote = FALSE

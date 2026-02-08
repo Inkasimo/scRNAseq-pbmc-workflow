@@ -52,7 +52,10 @@ option_list <- list(
   make_option("--require_same_sign", type="logical", default=TRUE,
               help="Require consistent sign across donors."),
   make_option("--leiden_resolution", type="double", default=1.0,
-              help="Leiden resolution parameter.")
+              help="Leiden resolution parameter."),
+  make_option("--deg_tables_dir", type="character", default="",
+  help="Directory containing conserved_*.tsv and markers_*.tsv tables to annotate nodes.")
+
 )
 
 opt <- parse_args(OptionParser(option_list = option_list))
@@ -64,8 +67,9 @@ dir.create(opt$outdir, recursive = TRUE, showWarnings = FALSE)
 dir.create(file.path(opt$outdir, "per_donor"), recursive = TRUE, showWarnings = FALSE)
 dir.create(file.path(opt$outdir, "consensus"), recursive = TRUE, showWarnings = FALSE)
 dir.create(file.path(opt$outdir, "tables"), recursive = TRUE, showWarnings = FALSE)
-
-
+dir.create(file.path(opt$outdir, "plots"), recursive = TRUE, showWarnings = FALSE)
+out_plot <- file.path(opt$outdir, "plots")
+  
 read_rds_list <- function(x) {
   xs <- strsplit(x, ",", fixed=TRUE)[[1]]
   xs <- trimws(xs)
@@ -151,26 +155,100 @@ sparsify_topk <- function(C, top_k=25, min_abs_cor=0.25, positive_only=TRUE) {
   df %>% rename(from=a, to=b)
 }
 
-# Leiden clustering wrapper (igraph >= 1.3 has cluster_leiden)
 run_leiden <- function(g, resolution=1.0, seed=1) {
   set.seed(seed)
-  if (!"cluster_leiden" %in% getNamespaceExports("igraph")) {
-    stop("igraph::cluster_leiden not available. Update igraph in container or use an alternative Leiden package.")
-  }
-  cl <- igraph::cluster_leiden(g, resolution_parameter=resolution, weights=E(g)$weight)
+  if (!"cluster_leiden" %in% getNamespaceExports("igraph")) stop("igraph::cluster_leiden not available.")
+
+  cl <- tryCatch(
+    igraph::cluster_leiden(
+      g,
+      resolution_parameter = resolution,
+      weights = E(g)$weight,
+      objective_function = "modularity"
+    ),
+    error = function(e) {
+      message("Leiden objective_function not supported; falling back to default.")
+      igraph::cluster_leiden(g, resolution_parameter = resolution, weights = E(g)$weight)
+    }
+  )
   membership(cl)
 }
 
-# ORA enrichment for one module gene set against MSigDB Hallmark
-ora_hallmark <- function(genes, universe, hallmark_df) {
-  # hallmark_df columns: gs_name, gene_symbol
-  gs <- split(hallmark_df$gene_symbol, hallmark_df$gs_name)
-  enricher(
-    gene = unique(genes),
-    universe = unique(universe),
-    TERM2GENE = stack(gs) %>% transmute(term=ind, gene=values),
-    pAdjustMethod = "BH"
+plot_hist_png <- function(x, file, main, xlab="weight", breaks=60,
+                          add_quantiles=TRUE) {
+  x <- x[is.finite(x)]
+  if (length(x) < 2) return(invisible(NULL))
+
+  dir.create(dirname(file), recursive=TRUE, showWarnings=FALSE)
+  png(file, width=1200, height=900, res=120)
+
+  hist(
+    x,
+    breaks = breaks,
+    main   = main,
+    xlab   = xlab,
+    col    = "grey80",
+    border = "grey40"
   )
+
+  abline(v = median(x), lwd = 2)
+
+  if (isTRUE(add_quantiles)) {
+    qs <- quantile(x, c(0.05, 0.95))
+    abline(v = qs, lty = 2)
+  }
+
+  dev.off()
+}
+
+
+
+plot_support_png <- function(s, file,
+                             main="Edge support",
+                             xlab="support (# donors)",
+                             ylab="edge count") {
+  s <- s[is.finite(s)]
+  if (length(s) < 1) return(invisible(NULL))
+
+  dir.create(dirname(file), recursive=TRUE, showWarnings=FALSE)
+  png(file, width=1200, height=900, res=120)
+
+  tab <- table(factor(s, levels=sort(unique(s))))
+  barplot(
+    tab,
+    main  = main,
+    xlab  = xlab,
+    ylab  = ylab,
+    col   = "grey80",
+    border= "grey40"
+  )
+
+  dev.off()
+}
+
+
+
+ora_hallmark <- function(genes, universe, hallmark_df) {
+  term2gene <- hallmark_df %>% dplyr::transmute(term = gs_name, gene = gene_symbol)
+
+  hall_genes <- unique(term2gene$gene)
+
+  genes2 <- intersect(unique(genes), hall_genes)
+  universe2 <- intersect(unique(universe), hall_genes)
+
+  # if too few mappable genes, skip quietly
+  if (length(genes2) < 10 || length(universe2) < 50) return(NULL)
+
+  suppressMessages(suppressWarnings(
+    enricher(
+      gene = genes2,
+      universe = universe2,
+      TERM2GENE = term2gene,
+      pAdjustMethod = "BH",
+      minGSSize = 10,
+      maxGSSize = 500
+    )
+  ))
 }
 
 # Largest connected component
@@ -223,6 +301,35 @@ if (nzchar(opt$markers)) {
     if (!is.list(markers_pbmc) || is.null(names(markers_pbmc))) stop("'markers_pbmc' must be a named list.")
   }
 }
+
+deg_markers <- list()
+deg_conserved <- list()
+
+if (nzchar(opt$deg_tables_dir)) {
+  if (!dir.exists(opt$deg_tables_dir)) stop(paste("Missing deg_tables_dir:", opt$deg_tables_dir))
+
+  marker_files <- list.files(opt$deg_tables_dir, pattern="^markers_.*\\.tsv$", full.names=TRUE)
+  conserved_files <- list.files(opt$deg_tables_dir, pattern="^conserved_.*\\.tsv$", full.names=TRUE)
+
+  read_gene_col <- function(f) {
+    x <- suppressWarnings(read.delim(f, sep="\t", header=TRUE, stringsAsFactors=FALSE))
+    # pick a likely gene column
+    cand <- c("gene", "gene_symbol", "symbol", "Gene", "GeneSymbol")
+    col <- cand[cand %in% colnames(x)][1]
+    if (is.na(col)) stop(paste("No gene column found in", f, "columns:", paste(colnames(x), collapse=", ")))
+    unique(as.character(x[[col]]))
+  }
+
+  for (f in marker_files) {
+    nm <- tools::file_path_sans_ext(basename(f))  # e.g. markers_T_like_vs_B_like
+    deg_markers[[nm]] <- read_gene_col(f)
+  }
+  for (f in conserved_files) {
+    nm <- tools::file_path_sans_ext(basename(f))
+    deg_conserved[[nm]] <- read_gene_col(f)
+  }
+}
+
 
 # -------------------------
 # Load Seurat objects (annotated)
@@ -294,9 +401,10 @@ for (set_name in names(ct_sets)) {
 
   out_set <- file.path(opt$outdir, "consensus", set_name)
   out_per <- file.path(opt$outdir, "per_donor", set_name)
+  out_plot <- file.path(opt$outdir, "plots")
   dir.create(out_set, recursive=TRUE, showWarnings=FALSE)
   dir.create(out_per, recursive=TRUE, showWarnings=FALSE)
-
+  
   # Collect donor edge lists
   donor_edges <- list()
   donor_genes <- list()
@@ -372,8 +480,17 @@ for (set_name in names(ct_sets)) {
 
     ed$donor <- d
 
+  plot_hist_png(
+    ed$cor,
+    file.path(out_plot, sprintf("%s_edge_weight_hist_sparsified_%s.png", set_name, d)),
+    main=sprintf("%s / %s: donor %s edge weights (sparsified)", set_name, label_col, d),
+    xlab="cor"
+  )
+
+
     # genes present in this donor BEFORE LCC (for universe counting)
-    donor_genes_universe[[d]] <- sort(unique(c(ed$from, ed$to)))
+    donor_genes_universe[[d]] <- hvgs
+
 
 
     g_donor <- igraph::graph_from_data_frame(
@@ -391,6 +508,14 @@ for (set_name in names(ct_sets)) {
     if ("weight" %in% names(ed2)) names(ed2)[names(ed2) == "weight"] <- "cor"
 
     ed2$donor <- d
+
+    plot_hist_png(
+      ed2$cor,
+      file.path(out_per, sprintf("edge_weight_hist_postLCC_%s.png", d)),
+      main=sprintf("%s: donor %s edge weights (post donor-LCC)", set_name, d),
+      xlab="cor"
+    )
+
 
     # IMPORTANT: store the post-LCC edges for consensus
     donor_edges[[d]] <- ed2
@@ -437,6 +562,20 @@ for (set_name in names(ct_sets)) {
       median_cor = median(cor),
       .groups="drop"
     )
+  
+  plot_hist_png(
+    all_ed$median_cor,
+    file.path(out_plot, sprintf("%s_consensus_hist_median_cor_ALL_edges.png", set_name)),
+    main=sprintf("%s: ALL edges median_cor (before support/sign filters)", set_name),
+    xlab="median_cor"
+  )
+
+  plot_support_png(
+    all_ed$support,
+    file.path(out_plot, sprintf("%s_consensus_bar_support_ALL_edges.png", set_name)),
+    main=sprintf("%s: ALL edges support (before filters)", set_name)
+  )
+
 
   cons <- all_ed %>%
     filter(support >= opt$consensus_min_donors)
@@ -455,8 +594,26 @@ for (set_name in names(ct_sets)) {
     next
   }
 
+
+ plot_hist_png(
+  cons$median_cor,
+  file = file.path(out_set, "edge_weight_raw.png"),
+  main = paste0(set_name, " consensus raw weight"),
+  xlab = "median cor"
+)
+
+plot_support_png(
+  cons$support,
+  file = file.path(out_set, "edge_support.png"),
+  main = paste0(set_name, " edge support")
+)
+
+
   cons0 <- cons %>% mutate(weight = median_cor) %>% select(from, to, weight, support)
   cons <- cons0
+  edges_consensus_preLCC <- nrow(cons0)
+  
+
 
 
   g <- igraph::graph_from_data_frame(
@@ -482,6 +639,32 @@ for (set_name in names(ct_sets)) {
     ) %>%
     select(from = a, to = b, cor, support)
 
+  
+  cons <- cons %>%
+  mutate(
+    support_frac = support / length(donor_edges),
+    weight_consensus = cor * support_frac
+  )
+  edges_consensus_postLCC <- nrow(cons)
+  plot_hist_png(
+    cons$cor,
+    file.path(out_plot, sprintf("%s_consensus_hist_cor_FINAL_postLCC.png", set_name)),
+    main=sprintf("%s: FINAL consensus edge weights (post consensus-LCC)", set_name),
+    xlab="cor"
+  )
+
+  plot_support_png(
+    cons$support,
+    file.path(out_plot, sprintf("%s_consensus_bar_support_FINAL_postLCC.png", set_name)),
+    main=sprintf("%s: FINAL consensus support (post consensus-LCC)", set_name)
+  )
+
+  plot_hist_png(
+  cons$weight_consensus,
+  file = file.path(out_set, "edge_weight_consensus.png"),
+  main = paste0(set_name, " consensus weighted"),
+  xlab = "consensus weight"
+)
 
   saveRDS(g, file = file.path(out_set, "graph_consensus.rds"))
 
@@ -511,6 +694,35 @@ for (set_name in names(ct_sets)) {
     stringsAsFactors = FALSE
   )
 
+  # Aggregate flags
+if (length(deg_markers) > 0) {
+  
+  if ("markers_any_contrast" %in% names(deg_markers)) {
+    nodes$is_deg_marker_any <- nodes$id %in% deg_markers[["markers_any_contrast"]]
+  } else {
+    nodes$is_deg_marker_any <- nodes$id %in% unique(unlist(deg_markers))
+  }
+
+  for (nm in names(deg_markers)) {
+    nodes[[paste0("is_", nm)]] <- nodes$id %in% deg_markers[[nm]]
+  }
+}
+
+if (length(deg_conserved) > 0) {
+
+  if ("conserved_any_contrast" %in% names(deg_conserved)) {
+  nodes$is_deg_conserved_any <- nodes$id %in% deg_conserved[["conserved_any_contrast"]]
+
+} else {
+  nodes$is_deg_conserved_any <- nodes$id %in% unique(unlist(deg_conserved))
+}
+
+  for (nm in names(deg_conserved)) {
+    nodes[[paste0("is_", nm)]] <- nodes$id %in% deg_conserved[[nm]]
+  }
+}
+
+
   # Annotate marker membership (if markers_pbmc provided)
   if (!is.null(markers_pbmc)) {
     # For each marker set, add boolean column: is_marker_<name>
@@ -524,9 +736,20 @@ for (set_name in names(ct_sets)) {
   # Write Gephi tables
   write.table(nodes, file=file.path(out_set, "nodes.tsv"), sep="\t", row.names=FALSE, quote=FALSE)
   
-  write.table(cons %>% transmute(from, to, weight = cor, support),
-            file = file.path(out_set, "edges.tsv"),
-            sep = "\t", row.names = FALSE, quote = FALSE)
+  write.table(
+    cons %>%
+      transmute(
+        from,
+        to,
+        weight = cor,
+        support,
+        support_frac,
+        weight_consensus
+      ),
+    file = file.path(out_set, "edges.tsv"),
+    sep = "\t", row.names = FALSE, quote = FALSE
+  )
+
 
   write.table(modules, file=file.path(out_set, "modules.tsv"), sep="\t", row.names=FALSE, quote=FALSE)
 
@@ -587,13 +810,15 @@ for (set_name in names(ct_sets)) {
 
   # Summary
   summary_tbl <- data.frame(
-    celltype_set = set_name,
-    donors_used = length(donor_edges),
-    genes_universe = length(universe),
-    edges_consensus = nrow(cons),
-    modules = length(unique(modules$module)),
-    stringsAsFactors = FALSE
-  )
+  celltype_set = set_name,
+  donors_used = length(donor_edges),
+  genes_universe = length(universe),
+  edges_consensus_preLCC = edges_consensus_preLCC,
+  edges_consensus_postLCC = edges_consensus_postLCC,
+  modules = length(unique(modules$module)),
+  stringsAsFactors = FALSE
+)
+
   write.table(summary_tbl,
     file=file.path(opt$outdir, "tables", paste0("network_summary_", set_name, ".tsv")),
     sep="\t", row.names=FALSE, quote=FALSE
