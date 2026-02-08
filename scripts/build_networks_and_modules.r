@@ -10,6 +10,8 @@ suppressPackageStartupMessages({
   library(igraph)
   library(msigdbr)
   library(clusterProfiler)
+  library(ggplot2)
+  library(readr)
 })
 # ADD THE MARKER GENES AND CONSERVED GENES TO THE GEPHI NODE OUTPUT!
 
@@ -174,6 +176,16 @@ run_leiden <- function(g, resolution=1.0, seed=1) {
   membership(cl)
 }
 
+parse_hallmark <- function(x) {
+  x <- gsub("^HALLMARK_", "", x)
+  x <- gsub("_", " ", x)
+  # Title Case-ish (base R)
+  x <- tolower(x)
+  x <- gsub("\\b([a-z])", "\\U\\1", x, perl = TRUE)
+  x
+}
+
+
 plot_hist_png <- function(x, file, main, xlab="weight", breaks=60,
                           add_quantiles=TRUE) {
   x <- x[is.finite(x)]
@@ -251,43 +263,62 @@ plot_module_sizes <- function(modules, out_png, title) {
   return(df)
 }
 
-plot_enrichment_bubble <- function(enr_df, out_png, title,
-                                   max_terms = 10) {
-  if (is.null(enr_df) || nrow(enr_df) == 0) return(NULL)
+plot_enrichment_dotplot <- function(enrich_tsv, out_png,
+                                    top_n_per_module = 5,
+                                    padj_max = 0.05) {
+  df <- readr::read_tsv(enrich_tsv, show_col_types = FALSE)
 
-  df <- enr_df %>%
+  # clusterProfiler uses: ID, Description, pvalue, p.adjust, Count, GeneRatio...
+  # Your TERM names might be in Description or ID. Prefer Description.
+  term_col <- if ("Description" %in% names(df)) "Description" else "ID"
+
+  df <- df %>%
     mutate(
-      neglog10_padj = -log10(p.adjust),
-      term = Description
+      term_raw = .data[[term_col]],
+      term = parse_hallmark(term_raw),
+      module = as.factor(module),
+      neglog10_padj = -log10(p.adjust + 1e-300)
     ) %>%
+    filter(is.finite(neglog10_padj))
+
+  # Optional filtering
+  if (!is.null(padj_max)) df <- df %>% filter(p.adjust <= padj_max)
+
+  # Keep top N terms per module (by p.adjust)
+  df <- df %>%
     group_by(module) %>%
-    slice_min(order_by = p.adjust, n = max_terms) %>%
+    arrange(p.adjust, desc(Count)) %>%
+    slice_head(n = top_n_per_module) %>%
     ungroup()
 
-  png(out_png, width = 1000, height = 700)
-  par(mar = c(8, 5, 4, 2))
+  if (nrow(df) == 0) {
+    message("No enrichment hits to plot for: ", enrich_tsv)
+    return(invisible(NULL))
+  }
 
-  plot(
-    x = df$module,
-    y = df$neglog10_padj,
-    cex = scales::rescale(df$Count, to = c(1.5, 6)),
-    pch = 21,
-    bg = "grey70",
-    xlab = "Module",
-    ylab = "-log10(adj p-value)",
-    main = title
-  )
+  # Order y-axis by overall significance
+  term_order <- df %>%
+    group_by(term) %>%
+    summarise(best = max(neglog10_padj), .groups = "drop") %>%
+    arrange(best) %>%
+    pull(term)
 
-  text(
-    x = df$module,
-    y = df$neglog10_padj,
-    labels = df$term,
-    pos = 3,
-    cex = 0.6,
-    srt = 45
-  )
+  df$term <- factor(df$term, levels = term_order)
 
-  dev.off()
+  p <- ggplot(df, aes(x = module, y = term)) +
+    geom_point(aes(size = Count, color = neglog10_padj), alpha = 0.9) +
+    scale_color_continuous(name = "-log10(adj p)") +
+    scale_size_continuous(name = "Overlap (Count)") +
+    labs(x = "Module", y = NULL, title = "Hallmark enrichment by module (ORA)") +
+    theme_bw(base_size = 12) +
+    theme(
+      panel.grid.major.y = element_blank(),
+      axis.text.y = element_text(size = 10),
+      plot.title = element_text(hjust = 0.5)
+    )
+
+  ggsave(out_png, p, width = 12, height = max(6, 0.25 * length(levels(df$term))), dpi = 150)
+  out_png
 }
 
 
@@ -839,11 +870,13 @@ if (length(deg_conserved) > 0) {
       sep="\t", row.names=FALSE, quote=FALSE
     )
 
-    plot_enrichment_bubble(
-      enr_tbl,
-      out_png = file.path(out_set, "enrichment_hallmark_bubble.png"),
-      title = paste0(set_name, ": Hallmark enrichment by module")
-    )
+  plot_enrichment_dotplot(
+    enrich_tsv = file.path(out_set, "enrichment_hallmark_ora.tsv"),
+    out_png    = file.path(out_set, "enrichment_hallmark_dotplot.png"),
+    top_n_per_module = 6,
+    padj_max = 0.10
+  )
+
 
   }
 
@@ -875,11 +908,13 @@ if (length(deg_conserved) > 0) {
         file=file.path(out_set, "enrichment_marker_sets_ora.tsv"),
         sep="\t", row.names=FALSE, quote=FALSE
       )
-      plot_enrichment_bubble(
-        ms_tbl,
-        out_png = file.path(out_set, "enrichment_marker_sets_bubble.png"),
-        title = paste0(set_name, ": marker-set enrichment by module")
+      plot_enrichment_dotplot(
+        enrich_tsv = file.path(out_set, "enrichment_marker_sets_ora.tsv"),
+        out_png    = file.path(out_set, "enrichment_marker_sets_dotplot.png"),
+        top_n_per_module = 6,
+        padj_max = 0.10
       )
+
     }
   }
 
