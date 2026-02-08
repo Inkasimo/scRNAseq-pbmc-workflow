@@ -95,7 +95,7 @@ This installs:
 If you do not use the wrapper, you can ignore this step entirely.
 
 
-#### Example runs
+#### Example runs:
 
 ****Inspect available sections:****
 

@@ -167,6 +167,11 @@ rule all:
             trim_state=["trimmed"] if is_trimmed() else ["untrimmed"],
         ),
 
+        # Networks
+        expand(
+            "results/downstream/networks/{trim_state}/networks.done",
+            trim_state=["trimmed"] if is_trimmed() else ["untrimmed"],
+        ),
 
 
 
@@ -827,6 +832,115 @@ rule deg_and_tost:
             --equiv_alpha {params.equiv_alpha} \
             --equiv_delta {params.equiv_delta} \
             --seed {params.seed}
+
+        tmp="{output.done}.tmp"
+        echo ok > "$tmp"
+        mv -f "$tmp" "{output.done}"
+        """
+
+rule networks:
+    """
+    Build per-donor networks + consensus + modules, using annotated Seurat objects.
+    Outputs are placed under:
+      results/downstream/networks/{trim_state}/
+    where trim_state is untrimmed|trimmed.
+    """
+    input:
+        # Ensure annotated objects exist for selected donors in this trim_state
+        annot_done=lambda wc: [
+            f"results/downstream/seurat/{wc.trim_state}/{d}/seurat_cluster_annot/seurat_cluster_annot.done"
+            for d in DONORS
+        ],
+        seurat_rds=lambda wc: [
+            f"results/downstream/seurat/{wc.trim_state}/{d}/seurat_cluster_annot/{d}_annotated_object.rds"
+            for d in DONORS
+        ],
+        celltype_sets="scripts/celltype_sets.R",
+        markers="scripts/markers_pbmc.R",
+        # Network script (assumes this is the correct repo path; adjust only if needed)
+        script="scripts/build_networks_and_modules.r",
+        # DE tables directory (produced by deg_and_tost)
+        deg_done=lambda wc: f"results/downstream/deg_and_tost/{wc.trim_state}/deg_and_tost/deg_and_tost.done",
+    output:
+        done="results/downstream/networks/{trim_state}/networks.done"
+    log:
+        "results/logs/downstream/networks_{trim_state}.log"
+    params:
+        outdir=lambda wc: f"results/downstream/networks/{wc.trim_state}",
+        donor_names=lambda wc: ",".join(DONORS),
+        # Where DE tables live (kept consistent with your earlier structure)
+        deg_tables_dir=lambda wc: f"results/downstream/deg_and_tost/{wc.trim_state}/deg_and_tost/tables",
+
+        # ---- Network config passthrough (defaults as in config snippet) ----
+        celltype_sets_list=lambda wc: ",".join(config.get("network", {}).get("celltype_sets", [])),
+        min_cells_per_donor_group=lambda wc: int(config.get("network", {}).get("min_cells_per_donor_group", 200)),
+
+        metacells_enabled=lambda wc: bool(config.get("network", {}).get("metacells", {}).get("enabled", True)),
+        metacell_size=lambda wc: int(config.get("network", {}).get("metacells", {}).get("size", 20)),
+        seed=lambda wc: int(config.get("network", {}).get("metacells", {}).get("seed", 42)),
+
+        gene_detect_frac=lambda wc: float(config.get("network", {}).get("gene_filter", {}).get("min_detect_frac", 0.05)),
+        hvg_n=lambda wc: int(config.get("network", {}).get("gene_filter", {}).get("hvg_n", 3000)),
+
+        cor_method=lambda wc: str(config.get("network", {}).get("correlation", {}).get("method", "spearman")),
+        positive_only=lambda wc: bool(config.get("network", {}).get("correlation", {}).get("sign", "positive_only") == "positive_only"),
+        min_abs_cor=lambda wc: float(config.get("network", {}).get("correlation", {}).get("min_abs_cor", 0.0)),
+
+        top_k=lambda wc: int(config.get("network", {}).get("sparsify", {}).get("top_k", 25)),
+
+        consensus_min_donors=lambda wc: int(config.get("network", {}).get("consensus", {}).get("min_donors", 3)),
+        require_same_sign=lambda wc: bool(config.get("network", {}).get("consensus", {}).get("require_same_sign", True)),
+
+        leiden_resolution=lambda wc: float(config.get("network", {}).get("modules", {}).get("resolution", 1.0)),
+
+        enrichment_enabled=lambda wc: bool(config.get("network", {}).get("enrichment", {}).get("enabled", True)),
+
+        metacell_input=lambda wc: str(config.get("network", {}).get("metacell_input", "log")),
+
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p "{params.outdir}"
+        mkdir -p results/logs/downstream
+
+        # Build comma-separated input list for the R script
+        SEURAT_CSV="$(printf "%s," {input.seurat_rds} | sed 's/,$//')"
+        test -n "$SEURAT_CSV"
+
+        # Basic validations
+        test -s "{input.celltype_sets}"
+        test -s "{input.markers}"
+        test -s "{input.script}"
+        test -d "{params.deg_tables_dir}"
+
+        # Booleans for R (TRUE/FALSE)
+        POS_ONLY="{params.positive_only}"
+        if [ "$POS_ONLY" = "True" ] || [ "$POS_ONLY" = "true" ]; then POS_ONLY="TRUE"; else POS_ONLY="FALSE"; fi
+
+        REQ_SIGN="{params.require_same_sign}"
+        if [ "$REQ_SIGN" = "True" ] || [ "$REQ_SIGN" = "true" ]; then REQ_SIGN="TRUE"; else REQ_SIGN="FALSE"; fi
+
+        Rscript "{input.script}" \
+          --seurat "$SEURAT_CSV" \
+          --outdir "{params.outdir}" \
+          --celltype_sets "{input.celltype_sets}" \
+          --markers "{input.markers}" \
+          --donor_names "{params.donor_names}" \
+          --metacell_input "{params.metacell_input}" \
+          --min_cells_per_donor_group {params.min_cells_per_donor_group} \
+          --metacell_size {params.metacell_size} \
+          --seed {params.seed} \
+          --gene_detect_frac {params.gene_detect_frac} \
+          --hvg_n {params.hvg_n} \
+          --cor_method "{params.cor_method}" \
+          --positive_only "$POS_ONLY" \
+          --top_k {params.top_k} \
+          --min_abs_cor {params.min_abs_cor} \
+          --consensus_min_donors {params.consensus_min_donors} \
+          --require_same_sign "$REQ_SIGN" \
+          --leiden_resolution {params.leiden_resolution} \
+          --deg_tables_dir "{params.deg_tables_dir}" \
+          > "{log}" 2>&1
 
         tmp="{output.done}.tmp"
         echo ok > "$tmp"
