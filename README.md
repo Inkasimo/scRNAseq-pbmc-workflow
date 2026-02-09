@@ -186,6 +186,28 @@ The 10x Genomics barcode whitelist is bundled directly in the repository:
 
 This avoids reliance on unstable upstream URLs and ensures reproducible execution.
 
+### Gene sets
+
+Gene sets used for enrichment analyses are stored locally under:
+
+`resources/genesets/`
+
+
+This includes:
+
+**MSigDB Hallmark gene sets**
+`h.all.v2026.1.Hs.symbols.gmt`
+
+
+**MSigDB C7 (immunologic signatures)**
+`c7.all.v2026.1.Hs.symbols.gmt`
+
+All enrichment steps (GSEA and ORA) explicitly reference these local files, 
+ensuring that downstream results are reproducible and independent of external downloads.
+
+MSigDB gene sets are redistributed here for reproducibility. MSigDB is developed and maintained
+by the Broad Institute; users should ensure compliance with MSigDB licensing terms when reusing these resources.
+
 ## Workflow
 
 ### Execution flow
