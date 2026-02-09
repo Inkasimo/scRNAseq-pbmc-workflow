@@ -92,22 +92,28 @@ def starsolo_done(donor, mode):
 
 
 def resolve_fastq_dir(donor):
-    base = config["pbmc"][donor].get("fastq_base", config["pbmc"][donor].get("fastq_dir"))
-    if base is None:
-        raise ValueError(f"{donor}: need pbmc.{donor}.fastq_base (or fastq_dir)")
+    # If we are downloading, the canonical base is the workflow-managed raw folder
+    if DOWNLOAD_FASTQS:
+        base = f"data/raw/{donor}"
+        done = Path(base) / "fastqs.done"
+        if not done.exists():
+            return base
+    else:
+        base = config["pbmc"][donor].get("fastq_base", config["pbmc"][donor].get("fastq_dir"))
+        if base is None:
+            raise ValueError(f"{donor}: need pbmc.{donor}.fastq_base (or fastq_dir)")
 
-    # search base recursively for fastqs
     r1 = sorted(glob.glob(os.path.join(base, "**", "*_R1_*.fastq.gz"), recursive=True))
     r2 = sorted(glob.glob(os.path.join(base, "**", "*_R2_*.fastq.gz"), recursive=True))
 
     if not r1 or not r2:
         raise ValueError(f"{donor}: no R1/R2 fastqs found under {base}")
 
-    # choose the directory that contains the most R1 files (usually the right one)
     from collections import Counter
     r1_dirs = Counter(os.path.dirname(x) for x in r1)
-    fqdir = r1_dirs.most_common(1)[0][0]
-    return fqdir
+    return r1_dirs.most_common(1)[0][0]
+
+
 
 
 # ALL RULE
