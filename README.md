@@ -195,11 +195,13 @@ Gene sets used for enrichment analyses are stored locally under:
 
 This includes:
 
-**MSigDB Hallmark gene sets**
+**MSigDB Hallmark gene sets:**
+
 `h.all.v2026.1.Hs.symbols.gmt`
 
 
-**MSigDB C7 (immunologic signatures)**
+**MSigDB C7 (immunologic signatures):**
+
 `c7.all.v2026.1.Hs.symbols.gmt`
 
 All enrichment steps (GSEA and ORA) explicitly reference these local files, 
