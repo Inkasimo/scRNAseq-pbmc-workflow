@@ -136,3 +136,85 @@ str(opt)
 
 
 ## Maybe add MSigDB C7 (immunologic signatures) to enrichment at some point
+
+ghcr.io/inkas/scrnaseq-pbmc-workflow:archive-2026-02-09
+
+
+STEP 1 — Decide the GitHub image name (copy-paste this)
+
+We will publish to GitHub Container Registry.
+
+Use this exact name (lowercase is important):
+
+ghcr.io/inkas/scrnaseq-pbmc-workflow:archive-2026-02-09
+
+STEP 2 — Tag the existing image (NO rebuild)
+
+This just gives your current image a GitHub name.
+
+docker tag scrnaseq-workflow:latest \
+  ghcr.io/inkas/scrnaseq-pbmc-workflow:archive-2026-02-09
+
+
+Check:
+
+docker images | grep ghcr.io
+
+
+You should now see the same IMAGE ID (80354b76e764) with the new name.
+
+STEP 3 — Login to GitHub Container Registry
+
+You need a GitHub Personal Access Token with:
+
+write:packages
+
+read:packages
+
+Then run:
+
+echo YOUR_GITHUB_TOKEN | docker login ghcr.io -u inkas --password-stdin
+
+
+If this succeeds, move on.
+
+STEP 4 — Push the image to GitHub
+
+This uploads the image. Takes a while (6 GB).
+
+docker push ghcr.io/inkas/scrnaseq-pbmc-workflow:archive-2026-02-09
+
+
+When this finishes: the image is published.
+
+STEP 5 — Get the immutable digest (THIS IS IMPORTANT)
+
+Run:
+
+docker inspect ghcr.io/inkas/scrnaseq-pbmc-workflow:archive-2026-02-09 \
+  --format='{{index .RepoDigests 0}}'
+
+
+You’ll get something like:
+
+ghcr.io/inkas/scrnaseq-pbmc-workflow@sha256:abc123deadbeef...
+
+
+👉 Copy that exact string somewhere safe.
+
+This is what guarantees reproducibility.
+
+STEP 6 — How you (or anyone) runs it later
+
+From any machine:
+
+docker pull ghcr.io/inkas/scrnaseq-pbmc-workflow@sha256:abc123deadbeef...
+
+
+Run your pipeline:
+
+docker run --rm -it \
+  -u "$(id -u):$(id -g)" \
+  -v "$PWD:/work" -w /work \
+  ghcr.io/inkas/scrnaseq-pbmc-workflow@sha256:abc123deadbeef... \
+  snakemake -j 8

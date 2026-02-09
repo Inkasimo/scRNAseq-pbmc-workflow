@@ -867,20 +867,22 @@ if (length(deg_conserved) > 0) {
   )
 
   # Edges
-  write.csv(
-    cons %>%
-      transmute(
-        from,
-        to,
-        weight = cor,
-        support,
-        support_frac,
-        weight_consensus
-      ),
-    file = file.path(out_set, "edges.csv"),
-    row.names = FALSE,
-    quote = TRUE
-  )
+  # Edges (Gephi wants Source/Target)
+write.csv(
+  cons %>%
+    transmute(
+      Source = from,
+      Target = to,
+      Weight = cor,
+      support,
+      support_frac,
+      weight_consensus
+    ),
+  file = file.path(out_set, "edges.csv"),
+  row.names = FALSE,
+  quote = TRUE
+)
+
 
   # Modules
   write.csv(
