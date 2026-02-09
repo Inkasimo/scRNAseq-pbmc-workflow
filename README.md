@@ -65,11 +65,27 @@ All core tools are provided inside the Docker image, including:
 
 - Python ≥3.9 (used only for the execution wrapper)
 
-## Build Docker image
+## Docker image
+
+### Recommended (reproducible)
+
+Pull the archived Docker image used for the released workflow:
+
+```bash
+docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow@sha256:80354b76e76405636c43e73902236e0399d26978a214227afbafa46fc0555bb8
+```
+
+This ensures you are running exactly the same environment used to generate the archived results.
+
+### Optional 
+
+To build the image locally instead:
 
 ```bash
 docker build -t scrnaseq-workflow -f containers/Dockerfile .
 ```
+
+Local builds are not guaranteed to be bit-identical to the archived environment.
 
 ## How to run
 
@@ -302,6 +318,7 @@ workflow/             # Snakemake workflow (rules, DAG)
 config/               # User-editable configuration (config.yaml)
 resources/            # Static resources bundled with the workflow
   barcodes/           # 10x barcode whitelist(s)
+  genesets/           # Hallmark and C7 .gmt files
 data/                 # Input data and references (not versioned)
   raw/                # FASTQ files (downloaded or user-provided)
   ref/                # Reference genome, GTF, STAR index
@@ -395,9 +412,6 @@ Once the workflow is finalized, a stable snapshot of representative results will
 This archive will include:
 - Representative output data produced by the full pipeline (alignment and downstream analysis).
 - A small toy dataset (downsampled FASTQs) intended for demonstration and pipeline sanity-check runs only.
-
-At the time of final release, the Docker image used to generate the archived results will also be published and referenced explicitly, 
-ensuring reproducible execution of the archived snapshot.
 
 
 ## Citation
