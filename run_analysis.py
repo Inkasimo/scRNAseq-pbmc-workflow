@@ -156,6 +156,7 @@ def main() -> int:
     sub = p.add_subparsers(dest="section")
 
     def add_common(sp: argparse.ArgumentParser) -> None:
+        #sp.add_argument("--image", default="ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0")
         sp.add_argument("--image", default="scrnaseq-workflow")
         sp.add_argument("--snakefile", default="workflow/Snakefile")
         sp.add_argument("--configfile", default="config/config.yaml")

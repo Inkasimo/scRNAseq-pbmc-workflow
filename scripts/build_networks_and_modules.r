@@ -21,7 +21,7 @@ option_list <- list(
   make_option("--seurat", type="character", help="Comma-separated list of annotated Seurat RDS files (one per donor)."),
   make_option("--outdir", type="character", help="Output directory."),
   make_option("--celltype_sets", type="character", default="scripts/celltype_sets.R",
-            help="Path to scripts/celltype_sets.R defining deg_sets (or celltype_sets) (named list)."),
+            help="Path to scripts/celltype_sets.R defining network_sets (or celltype_sets) (named list)."),
   make_option("--markers", type="character", default="",
               help="Optional: path to scripts/markers_pbmc.R defining markers_pbmc (named list)."),
   make_option("--donor_names", type="character", default="",
@@ -397,17 +397,17 @@ source(opt$celltype_sets)
 
 # Accept either naming convention:
 # - new: celltype_sets
-# - your current: deg_sets
+# - your current: network_sets
 if (exists("celltype_sets")) {
   ct_sets <- celltype_sets
-} else if (exists("deg_sets")) {
-  ct_sets <- deg_sets
+} else if (exists("network_sets")) {
+  ct_sets <- network_sets
 } else {
-  stop("celltype_sets file must define 'celltype_sets' or 'deg_sets' (named list).")
+  stop("celltype_sets file must define 'celltype_sets' or 'network_sets' (named list).")
 }
 
 if (!is.list(ct_sets) || is.null(names(ct_sets))) {
-  stop("Celltype set object must be a named list (celltype_sets or deg_sets).")
+  stop("Celltype set object must be a named list (celltype_sets or network_sets).")
 }
 
 

@@ -91,17 +91,17 @@ network:
   # Gene universe for network construction
   gene_filter:
     min_detect_frac: 0.05    # detected in ≥5% of metacells
-    hvg_n: 5000              # variable genes used for correlations
+    hvg_n: 4000              # variable genes used for correlations
 
   # Correlation model
   correlation:
     method: spearman         # robust to outliers
     sign: positive_only      # coexpression modules
-    min_abs_cor: 0.2         # rely on top-k sparsification
+    min_abs_cor: 0.25         # rely on top-k sparsification
 
   # Graph sparsification (per donor)
   sparsify:
-    top_k: 100                # edges per gene
+    top_k: 50                # edges per gene
 
   # Consensus network across donors
   consensus:

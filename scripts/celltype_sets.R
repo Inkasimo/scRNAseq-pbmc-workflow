@@ -11,3 +11,9 @@ deg_contrasts <- list(
   c("T_like","Mono_like"),
   c("B_like","Mono_like")
 )
+
+network_sets <- list(
+  CD4    = c("CD4_T"),
+  B_cells    = c("B_cells"),
+  CD14_mono = c("CD14_Mono")
+)
