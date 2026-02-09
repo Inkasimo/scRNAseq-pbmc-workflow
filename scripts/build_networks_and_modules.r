@@ -8,7 +8,6 @@ suppressPackageStartupMessages({
   library(tidyr)
   library(stringr)
   library(igraph)
-  library(msigdbr)
   library(clusterProfiler)
   library(ggplot2)
   library(readr)
@@ -56,8 +55,11 @@ option_list <- list(
   make_option("--leiden_resolution", type="double", default=1.0,
               help="Leiden resolution parameter."),
   make_option("--deg_tables_dir", type="character", default="",
-  help="Directory containing conserved_*.tsv and markers_*.tsv tables to annotate nodes.")
-
+             help="Directory containing conserved_*.tsv and markers_*.tsv tables to annotate nodes."),
+  make_option("--hallmark_gmt", type="character", default="",
+            help="Local Hallmark GMT file path (required for module ORA)."),
+  make_option("--c7_gmt", type="character", default="",
+            help="Local C7 GMT file path (required for module ORA).")
 )
 
 opt <- parse_args(OptionParser(option_list = option_list))
@@ -157,6 +159,25 @@ sparsify_topk <- function(C, top_k=25, min_abs_cor=0.25, positive_only=TRUE) {
   df %>% rename(from=a, to=b)
 }
 
+read_gmt_df <- function(gmt_path) {
+  lines <- readLines(gmt_path, warn = FALSE)
+  parts <- strsplit(lines, "\t", fixed = TRUE)
+
+  df_list <- lapply(parts, function(x) {
+    if (length(x) < 3) return(NULL)
+    gs <- x[[1]]
+    genes <- unique(x[3:length(x)])
+    genes <- genes[!is.na(genes) & nzchar(genes)]
+    if (length(genes) == 0) return(NULL)
+    data.frame(gs_name = gs, gene_symbol = genes, stringsAsFactors = FALSE)
+  })
+
+  df <- do.call(rbind, df_list)
+  if (is.null(df) || nrow(df) == 0) stop("GMT produced empty pathway table: ", gmt_path)
+  df
+}
+
+
 run_leiden <- function(g, resolution=1.0, seed=1) {
   set.seed(seed)
   if (!"cluster_leiden" %in% getNamespaceExports("igraph")) stop("igraph::cluster_leiden not available.")
@@ -176,14 +197,13 @@ run_leiden <- function(g, resolution=1.0, seed=1) {
   membership(cl)
 }
 
-parse_hallmark <- function(x) {
-  x <- gsub("^HALLMARK_", "", x)
+parse_term <- function(x) {
   x <- gsub("_", " ", x)
-  # Title Case-ish (base R)
   x <- tolower(x)
   x <- gsub("\\b([a-z])", "\\U\\1", x, perl = TRUE)
   x
 }
+
 
 
 plot_hist_png <- function(x, file, main, xlab="weight", breaks=60,
@@ -265,7 +285,8 @@ plot_module_sizes <- function(modules, out_png, title) {
 
 plot_enrichment_dotplot <- function(enrich_tsv, out_png,
                                     top_n_per_module = 5,
-                                    padj_max = 0.05) {
+                                    padj_max = 0.05,
+                                    title = "Enrichment by module (ORA)") {
   df <- readr::read_tsv(enrich_tsv, show_col_types = FALSE)
 
   # clusterProfiler uses: ID, Description, pvalue, p.adjust, Count, GeneRatio...
@@ -275,7 +296,7 @@ plot_enrichment_dotplot <- function(enrich_tsv, out_png,
   df <- df %>%
     mutate(
       term_raw = .data[[term_col]],
-      term = parse_hallmark(term_raw),
+      term = parse_term(term_raw),
       module = as.factor(module),
       neglog10_padj = -log10(p.adjust + 1e-300)
     ) %>%
@@ -305,11 +326,15 @@ plot_enrichment_dotplot <- function(enrich_tsv, out_png,
 
   df$term <- factor(df$term, levels = term_order)
 
-  p <- ggplot(df, aes(x = module, y = term)) +
+  df$term_plot <- stringr::str_wrap(stringr::str_trunc(as.character(df$term), 80), width = 40)
+  df$term_plot <- factor(df$term_plot, levels = unique(df$term_plot))
+
+
+  p <- ggplot(df, aes(x = module, y = term_plot)) +
     geom_point(aes(size = Count, color = neglog10_padj), alpha = 0.9) +
     scale_color_continuous(name = "-log10(adj p)") +
     scale_size_continuous(name = "Overlap (Count)") +
-    labs(x = "Module", y = NULL, title = "Hallmark enrichment by module (ORA)") +
+    labs(x = "Module", y = NULL, title=title) +
     theme_bw(base_size = 12) +
     theme(
       panel.grid.major.y = element_blank(),
@@ -317,20 +342,19 @@ plot_enrichment_dotplot <- function(enrich_tsv, out_png,
       plot.title = element_text(hjust = 0.5)
     )
 
-  ggsave(out_png, p, width = 12, height = max(6, 0.25 * length(levels(df$term))), dpi = 150)
+  ggsave(out_png, p, width = 12, height = max(6, 0.30 * nrow(df)), dpi = 150)
   out_png
 }
 
 
-ora_hallmark <- function(genes, universe, hallmark_df) {
-  term2gene <- hallmark_df %>% dplyr::transmute(term = gs_name, gene = gene_symbol)
+ora_gmt <- function(genes, universe, pathways_df) {
+  term2gene <- pathways_df %>% dplyr::transmute(term = gs_name, gene = gene_symbol)
 
-  hall_genes <- unique(term2gene$gene)
+  gs_genes <- unique(term2gene$gene)
 
-  genes2 <- intersect(unique(genes), hall_genes)
-  universe2 <- intersect(unique(universe), hall_genes)
+  genes2 <- intersect(unique(genes), gs_genes)
+  universe2 <- intersect(unique(universe), gs_genes)
 
-  # if too few mappable genes, skip quietly
   if (length(genes2) < 10 || length(universe2) < 50) return(NULL)
 
   suppressMessages(suppressWarnings(
@@ -455,7 +479,7 @@ pick_label_col <- function(obj) {
 }
 
 # Decide label column
-if (exists("deg_label_col") && nzchar(deg_label_col)) {
+if (exists("deg_label_col") && !is.null(deg_label_col) && nzchar(deg_label_col)) {
   label_col <- deg_label_col
 } else {
   label_col <- pick_label_col(objs[[1]])
@@ -476,13 +500,13 @@ for (d in names(objs)) {
   }
 }
 
-# -------------------------
-# MSigDB Hallmark (H)
-# -------------------------
-hallmark <- tryCatch(
-  msigdbr(species="Homo sapiens", category="H") %>% select(gs_name, gene_symbol) %>% distinct(),
-  error = function(e) stop("msigdbr failed. Ensure msigdbr is installed and available inside Docker.")
-)
+#Load gene lists
+
+if (!nzchar(opt$hallmark_gmt) || !file.exists(opt$hallmark_gmt)) stop("Missing/invalid --hallmark_gmt")
+if (!nzchar(opt$c7_gmt) || !file.exists(opt$c7_gmt)) stop("Missing/invalid --c7_gmt")
+
+pathways_h  <- read_gmt_df(opt$hallmark_gmt)  # columns: gs_name, gene_symbol
+pathways_c7 <- read_gmt_df(opt$c7_gmt)
 
 
 # -------------------------
@@ -622,7 +646,12 @@ for (set_name in names(ct_sets)) {
 
     # Write per-donor edges (Gephi-ready)
     write.table(
-      ed2 %>% dplyr::transmute(from, to, weight = cor, donor),
+      ed2 %>% dplyr::transmute(
+      Source = from,
+      Target = to,
+      Weight = cor,
+      donor = donor
+    ),
       file = file.path(out_per, paste0("edges_", d, ".tsv")),
       sep = "\t", row.names = FALSE, quote = FALSE
     )
@@ -763,10 +792,11 @@ for (set_name in names(ct_sets)) {
   )
 
   mod_sizes <- plot_module_sizes(
-    modules,
-    out_png = file.path(out_set, "module_size_distribution.png"),
-    title = paste0(set_name, ": module size distribution (consensus)")
-  )
+  modules,
+  out_png = file.path(plots_set, "module_size_distribution.png"),
+  title = paste0(set_name, ": module size distribution (consensus)")
+)
+
 
   write.table(
     mod_sizes,
@@ -866,8 +896,8 @@ if (length(deg_conserved) > 0) {
     genes_m <- modules$gene[modules$module == m]
     if (length(genes_m) < 10) next
     enr <- tryCatch(
-      ora_hallmark(genes=genes_m, universe=universe, hallmark_df=hallmark),
-      error=function(e) NULL
+      ora_gmt(genes = genes_m, universe = universe, pathways_df = pathways_h),
+      error = function(e) NULL
     )
     if (is.null(enr) || nrow(as.data.frame(enr)) == 0) next
     df_enr <- as.data.frame(enr) %>%
@@ -876,22 +906,53 @@ if (length(deg_conserved) > 0) {
     enr_list[[as.character(m)]] <- df_enr
   }
 
-  enr_tbl <- bind_rows(enr_list)
-  if (nrow(enr_tbl) > 0) {
-    write.table(enr_tbl,
-      file=file.path(out_set, "enrichment_hallmark_ora.tsv"),
-      sep="\t", row.names=FALSE, quote=FALSE
-    )
+  # Hallmark ORA (independent)
+enr_tbl <- bind_rows(enr_list)
+if (nrow(enr_tbl) > 0) {
+  write.table(enr_tbl, file=file.path(out_set, "enrichment_hallmark_ora.tsv"),
+              sep="\t", row.names=FALSE, quote=FALSE)
 
   plot_enrichment_dotplot(
     enrich_tsv = file.path(out_set, "enrichment_hallmark_ora.tsv"),
-    out_png    = file.path(out_set, "enrichment_hallmark_dotplot.png"),
+    out_png    = file.path(plots_set, "enrichment_hallmark_dotplot.png"),
     top_n_per_module = 6,
-    padj_max = 0.10
+    padj_max = 0.10,
+    title = "Hallmark enrichment by module (ORA)"
   )
+}
 
+# C7 ORA (independent)
+enr_list_c7 <- list()
+for (m in sort(unique(modules$module))) {
+  genes_m <- modules$gene[modules$module == m]
+  if (length(genes_m) < 10) next
+  enr <- tryCatch(
+    ora_gmt(genes = genes_m, universe = universe, pathways_df = pathways_c7),
+    error = function(e) NULL
+  )
+  if (is.null(enr) || nrow(as.data.frame(enr)) == 0) next
+  df_enr <- as.data.frame(enr) %>%
+    mutate(module = m, n_genes = length(genes_m)) %>%
+    select(module, n_genes, everything())
+  enr_list_c7[[as.character(m)]] <- df_enr
+}
 
-  }
+enr_tbl_c7 <- bind_rows(enr_list_c7)
+if (nrow(enr_tbl_c7) > 0) {
+  write.table(enr_tbl_c7, file=file.path(out_set, "enrichment_c7_ora.tsv"),
+              sep="\t", row.names=FALSE, quote=FALSE)
+
+  plot_enrichment_dotplot(
+    enrich_tsv = file.path(out_set, "enrichment_c7_ora.tsv"),
+    out_png    = file.path(plots_set, "enrichment_c7_dotplot.png"),
+    top_n_per_module = 6,
+    padj_max = 0.10,
+    title = "C7 enrichment by module (ORA)"
+  )
+}
+
+  
+
 
   # Optional: ORA with marker sets as "gene sets" (module -> enrichment in marker sets)
   if (!is.null(markers_pbmc)) {
@@ -923,9 +984,10 @@ if (length(deg_conserved) > 0) {
       )
       plot_enrichment_dotplot(
         enrich_tsv = file.path(out_set, "enrichment_marker_sets_ora.tsv"),
-        out_png    = file.path(out_set, "enrichment_marker_sets_dotplot.png"),
+        out_png    = file.path(plots_set, "enrichment_marker_sets_dotplot.png"),
         top_n_per_module = 6,
-        padj_max = 0.10
+        padj_max = 0.10,
+        title = "Marker-set enrichment by module (ORA)"
      )
 
     }

@@ -54,6 +54,10 @@ seurat_annotation:
   resolution: 0.3
   seed: 42
 
+genesets:
+  hallmark_gmt: "resources/genesets/h.all.v2026.1.Hs.symbols.gmt"
+  c7_gmt: "resources/genesets/c7.all.v2026.1.Hs.symbols.gmt"
+
 deg_and_tost:
   assay: "RNA"
   min_baseMean: 10

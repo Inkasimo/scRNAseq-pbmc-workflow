@@ -799,6 +799,8 @@ rule deg_and_tost:
             for d in DONORS
         ],
         celltype_sets="scripts/celltype_sets.R",
+        hallmark_gmt=lambda wc: config["genesets"]["hallmark_gmt"],
+        c7_gmt=lambda wc: config["genesets"]["c7_gmt"],
     output:
         done="results/downstream/deg_and_tost/{trim_state}/deg_and_tost/deg_and_tost.done"
     params:
@@ -831,7 +833,9 @@ rule deg_and_tost:
             --marker_lfc {params.marker_lfc} \
             --equiv_alpha {params.equiv_alpha} \
             --equiv_delta {params.equiv_delta} \
-            --seed {params.seed}
+            --seed {params.seed} \
+            --hallmark_gmt "{input.hallmark_gmt}" \
+            --c7_gmt "{input.c7_gmt}"
 
         tmp="{output.done}.tmp"
         echo ok > "$tmp"
@@ -861,6 +865,8 @@ rule networks:
         script="scripts/build_networks_and_modules.r",
         # DE tables directory (produced by deg_and_tost)
         deg_done=lambda wc: f"results/downstream/deg_and_tost/{wc.trim_state}/deg_and_tost/deg_and_tost.done",
+        hallmark_gmt=lambda wc: config["genesets"]["hallmark_gmt"],
+        c7_gmt=lambda wc: config["genesets"]["c7_gmt"],
     output:
         done="results/downstream/networks/{trim_state}/networks.done"
     log:
@@ -912,6 +918,9 @@ rule networks:
         test -s "{input.markers}"
         test -s "{input.script}"
         test -d "{params.deg_tables_dir}"
+        test -s "{input.hallmark_gmt}"
+        test -s "{input.c7_gmt}"
+
 
         # Booleans for R (TRUE/FALSE)
         POS_ONLY="{params.positive_only}"
@@ -940,6 +949,9 @@ rule networks:
           --require_same_sign "$REQ_SIGN" \
           --leiden_resolution {params.leiden_resolution} \
           --deg_tables_dir "{params.deg_tables_dir}" \
+          --hallmark_gmt "{input.hallmark_gmt}" \
+          --c7_gmt "{input.c7_gmt}" \
+
           > "{log}" 2>&1
 
         tmp="{output.done}.tmp"

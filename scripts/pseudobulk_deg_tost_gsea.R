@@ -6,9 +6,9 @@ suppressPackageStartupMessages({
   library(Matrix)
   library(DESeq2)
   library(ggplot2)
-  library(msigdbr)
   library(fgsea)
   library(clusterProfiler)
+  library(stringr)
 })
 
 option_list <- list(
@@ -37,8 +37,12 @@ option_list <- list(
   make_option("--equiv_alpha", type="double", default=0.05,
               help="FDR threshold for equivalence calls (TOST) (default 0.05)"),
   make_option("--equiv_delta", type="double", default=0.75,
-              help="Equivalence margin (abs log2FC < delta) (default 0.75)")
-)
+              help="Equivalence margin (abs log2FC < delta) (default 0.75)"),
+  make_option("--hallmark_gmt", type="character", default=NULL,
+            help="Local Hallmark GMT file path"),
+  make_option("--c7_gmt", type="character", default=NULL,
+            help="Local C7 (immunologic signatures) GMT file path")
+  )
 
 
 
@@ -55,6 +59,14 @@ if (length(opt$seurat) < 2) stop("Provide >=2 donors via --seurat path1,path2,..
 if (is.null(opt$seurat) || length(opt$seurat) < 2) {
   stop("Provide >=2 donors via repeated --seurat flags.")
 }
+
+if (is.null(opt$hallmark_gmt) || !file.exists(opt$hallmark_gmt)) {
+  stop("Missing/invalid --hallmark_gmt")
+}
+if (is.null(opt$c7_gmt) || !file.exists(opt$c7_gmt)) {
+  stop("Missing/invalid --c7_gmt")
+}
+
 
 set.seed(opt$seed)
 dir.create(opt$outdir, recursive=TRUE, showWarnings=FALSE)
@@ -261,50 +273,70 @@ require_pkg <- function(x) {
   }
 }
 
-load_pathways_hallmark <- function() {
-  require_pkg("msigdbr")
-  pw <- msigdbr::msigdbr(species = "Homo sapiens", category = "H")
-  pw[, c("gs_name", "gene_symbol")]
+read_gmt_df <- function(gmt_path) {
+  lines <- readLines(gmt_path, warn = FALSE)
+  parts <- strsplit(lines, "\t", fixed = TRUE)
+
+  # GMT format: NAME \t DESCRIPTION \t GENE1 \t GENE2 ...
+  df_list <- lapply(parts, function(x) {
+    if (length(x) < 3) return(NULL)
+    gs <- x[[1]]
+    genes <- unique(x[3:length(x)])
+    genes <- genes[!is.na(genes) & nzchar(genes)]
+    if (length(genes) == 0) return(NULL)
+    data.frame(gs_name = gs, gene_symbol = genes, stringsAsFactors = FALSE)
+  })
+
+  df <- do.call(rbind, df_list)
+  if (is.null(df) || nrow(df) == 0) stop("GMT produced empty pathway table: ", gmt_path)
+  df
 }
 
-run_gsea_fgsea <- function(ranks, pathways_df, out_tsv, out_png, top_n = 25) {
+
+run_gsea_fgsea <- function(ranks, pathways_df, out_tsv, out_png, label, top_n = 25) {
   require_pkg("fgsea")
   pw <- split(pathways_df$gene_symbol, pathways_df$gs_name)
-  
-  res <- fgsea::fgsea(pathways = pw, stats = ranks, eps=0)
+
+  res <- fgsea::fgsea(pathways = pw, stats = ranks, eps = 0)
   res <- as.data.frame(res)
   res <- res[order(res$padj, res$pval), , drop = FALSE]
-  
-  # fgsea includes list-columns (e.g. leadingEdge); write.table can't handle lists
+
   is_list_col <- vapply(res, is.list, logical(1))
   if (any(is_list_col)) {
     for (nm in names(res)[is_list_col]) {
-      res[[nm]] <- vapply(res[[nm]], function(x) {
-        if (is.null(x)) "" else paste(x, collapse = ",")
-      }, character(1))
+      res[[nm]] <- vapply(res[[nm]], function(x) if (is.null(x)) "" else paste(x, collapse=","), character(1))
     }
   }
-  
-  write.table(res, out_tsv, sep = "\t", row.names = FALSE, quote = FALSE)
-  
+
+  write.table(res, out_tsv, sep="\t", row.names=FALSE, quote=FALSE)
+
   df <- res[!is.na(res$padj), , drop = FALSE]
   df <- head(df, top_n)
   if (nrow(df) > 0) {
-    df$pathway <- factor(df$pathway, levels = rev(df$pathway))
-    p <- ggplot(df, aes(x = NES, y = pathway, size = size, color = -log10(padj))) +
-      geom_point(alpha = 0.9) +
-      labs(title = "GSEA (fgsea) Hallmark", x = "NES", y = "Pathway")
-    ggsave(out_png, p, width = 8, height = 6, dpi = 300)
+
+  # make long names readable
+ df$pathway_plot <- make.unique(stringr::str_wrap(stringr::str_trunc(df$pathway, 80), width = 40))
+ df$pathway_plot <- factor(df$pathway_plot, levels = rev(df$pathway_plot))
+
+  p <- ggplot(df, aes(x = NES, y = pathway_plot, size = size, color = -log10(padj))) +
+    geom_point(alpha = 0.9) +
+    labs(title = paste0("GSEA (fgsea) ", label), x = "NES", y = "Pathway") +
+    theme_bw(base_size = 11) +
+    theme(axis.text.y = element_text(size = 8))
+
+  h <- max(6, 0.25 * nrow(df))   # autoscale height
+  ggsave(out_png, p, width = 10, height = h, dpi = 300)
   }
-  
+
   invisible(res)
 }
 
 
-run_ora_enricher <- function(genes, universe, pathways_df, out_tsv, out_png, top_n = 25) {
+
+run_ora_enricher <- function(genes, universe, pathways_df, out_tsv, out_png, label, top_n = 25) {
   require_pkg("clusterProfiler")
-  term2gene <- unique(pathways_df[, c("gs_name", "gene_symbol")])
-  colnames(term2gene) <- c("term", "gene")
+  term2gene <- unique(pathways_df[, c("gs_name","gene_symbol")])
+  colnames(term2gene) <- c("term","gene")
 
   genes <- unique(genes)
   genes <- genes[!is.na(genes) & nzchar(genes)]
@@ -312,34 +344,44 @@ run_ora_enricher <- function(genes, universe, pathways_df, out_tsv, out_png, top
   universe <- unique(universe)
   universe <- universe[!is.na(universe) & nzchar(universe)]
 
-  # make sure query genes are subset of universe (prevents clusterProfiler warnings / empty)
   genes <- intersect(genes, universe)
 
   if (length(genes) < 5) {
-    write.table(data.frame(), out_tsv, sep = "\t", row.names = FALSE, quote = FALSE)
+    write.table(data.frame(), out_tsv, sep="\t", row.names=FALSE, quote=FALSE)
     return(invisible(NULL))
   }
 
   enr <- clusterProfiler::enricher(genes, universe = universe, TERM2GENE = term2gene)
   df <- as.data.frame(enr)
   df <- df[order(df$p.adjust, df$pvalue), , drop = FALSE]
-  write.table(df, out_tsv, sep = "\t", row.names = FALSE, quote = FALSE)
+  write.table(df, out_tsv, sep="\t", row.names=FALSE, quote=FALSE)
 
   d2 <- df[!is.na(df$p.adjust), , drop = FALSE]
   d2 <- head(d2, top_n)
   if (nrow(d2) > 0) {
-    d2$Description <- factor(d2$Description, levels = rev(d2$Description))
-    p <- ggplot(d2, aes(x = Count, y = Description, size = Count, color = -log10(p.adjust))) +
-      geom_point(alpha = 0.9) +
-      labs(title = "ORA (enricher) Hallmark", x = "Gene count", y = "Pathway")
-    ggsave(out_png, p, width = 8, height = 6, dpi = 300)
+  d2$Description_plot <- stringr::str_wrap(stringr::str_trunc(d2$Description, 80), width = 40)
+  d2$Description_plot <- make.unique(d2$Description_plot)
+  d2$Description_plot <- factor(d2$Description_plot, levels = rev(d2$Description_plot))
+
+
+p <- ggplot(d2, aes(x = Count, y = Description_plot, size = Count, color = -log10(p.adjust))) +
+  geom_point(alpha = 0.9) +
+  labs(title = paste0("ORA (enricher) ", label), x = "Gene count", y = "Pathway") +
+  theme_bw(base_size = 11) +
+  theme(axis.text.y = element_text(size = 8))
+
+ h <- max(6, 0.25 * nrow(d2))
+ ggsave(out_png, p, width=10, height=h, dpi=300)
   }
 
   invisible(df)
 }
 
 
-pathways_h <- load_pathways_hallmark()
+
+pathways_h <- read_gmt_df(opt$hallmark_gmt)
+pathways_c7 <- read_gmt_df(opt$c7_gmt)
+
 
 # -------------------------
 # Run contrasts
@@ -422,38 +464,63 @@ for (cc in deg_contrasts) {
   rnk <- tapply(rnk_df$log2FoldChange, rnk_df$gene, function(x) x[1])
   rnk <- sort(rnk, decreasing = TRUE)
   
-  run_gsea_fgsea(
-    ranks = rnk,
-    pathways_df = pathways_h,
-    out_tsv = file.path(opt$outdir, "tables", paste0("gsea_fgsea_", tag, ".tsv")),
-    out_png = file.path(opt$outdir, "plots", paste0("gsea_fgsea_", tag, "_bubble.png"))
-  )
-  
+  # ranks already computed as `rnk`
+# markers / conserved already computed
 
-  run_ora_enricher(
+# ---- Hallmark ----
+run_gsea_fgsea(
+  ranks = rnk,
+  pathways_df = pathways_h,
+  out_tsv = file.path(opt$outdir, "tables", paste0("gsea_hallmark_", tag, ".tsv")),
+  out_png = file.path(opt$outdir, "plots",  paste0("gsea_hallmark_", tag, "_bubble.png")),
+  label="Hallmark"
+)
+
+run_ora_enricher(
   genes = strip_dup_suffix(markers$gene),
   universe = strip_dup_suffix(fit$universe),
   pathways_df = pathways_h,
-  out_tsv = file.path(opt$outdir, "tables", paste0("ora_markers_", tag, ".tsv")),
-  out_png = file.path(opt$outdir, "plots", paste0("ora_markers_", tag, "_bubble.png"))
+  out_tsv = file.path(opt$outdir, "tables", paste0("ora_markers_hallmark_", tag, ".tsv")),
+  out_png = file.path(opt$outdir, "plots",  paste0("ora_markers_hallmark_", tag, "_bubble.png")),
+  label="Hallmark"
 )
-
 
 run_ora_enricher(
-  genes     = strip_dup_suffix(conserved$gene),
-  universe  = strip_dup_suffix(fit$universe),
+  genes = strip_dup_suffix(conserved$gene),
+  universe = strip_dup_suffix(fit$universe),
   pathways_df = pathways_h,
-  out_tsv   = file.path(
-    opt$outdir,
-    "tables",
-    paste0("ora_conserved_", tag, ".tsv")
-  ),
-  out_png  = file.path(
-    opt$outdir,
-    "plots",
-    paste0("ora_conserved_", tag, "_bubble.png")
-  )
+  out_tsv = file.path(opt$outdir, "tables", paste0("ora_conserved_hallmark_", tag, ".tsv")),
+  out_png = file.path(opt$outdir, "plots",  paste0("ora_conserved_hallmark_", tag, "_bubble.png")),
+  label="Hallmark"
 )
+
+# ---- C7 (immunologic signatures) ----
+run_gsea_fgsea(
+  ranks = rnk,
+  pathways_df = pathways_c7,
+  out_tsv = file.path(opt$outdir, "tables", paste0("gsea_c7_", tag, ".tsv")),
+  out_png = file.path(opt$outdir, "plots",  paste0("gsea_c7_", tag, "_bubble.png")),
+  label="C7"
+)
+
+run_ora_enricher(
+  genes = strip_dup_suffix(markers$gene),
+  universe = strip_dup_suffix(fit$universe),
+  pathways_df = pathways_c7,
+  out_tsv = file.path(opt$outdir, "tables", paste0("ora_markers_c7_", tag, ".tsv")),
+  out_png = file.path(opt$outdir, "plots",  paste0("ora_markers_c7_", tag, "_bubble.png")),
+  label="C7"
+)
+
+run_ora_enricher(
+  genes = strip_dup_suffix(conserved$gene),
+  universe = strip_dup_suffix(fit$universe),
+  pathways_df = pathways_c7,
+  out_tsv = file.path(opt$outdir, "tables", paste0("ora_conserved_c7_", tag, ".tsv")),
+  out_png = file.path(opt$outdir, "plots",  paste0("ora_conserved_c7_", tag, "_bubble.png")),
+  label="C7"
+)
+
 
 
   
@@ -573,7 +640,8 @@ run_ora_enricher(
   universe = universe_all,
   pathways_df = pathways_h,
   out_tsv = file.path(opt$outdir, "tables", "ora_markers_all_contrasts.tsv"),
-  out_png = file.path(opt$outdir, "plots", "ora_markers_all_contrasts_bubble.png")
+  out_png = file.path(opt$outdir, "plots", "ora_markers_all_contrasts_bubble.png"),
+  label="Hallmark"
 )
 
 run_ora_enricher(
@@ -581,9 +649,29 @@ run_ora_enricher(
   universe = universe_all,
   pathways_df = pathways_h,
   out_tsv = file.path(opt$outdir, "tables", "ora_conserved_all_contrasts.tsv"),
-  out_png = file.path(opt$outdir, "plots", "ora_conserved_all_contrasts_bubble.png")
+  out_png = file.path(opt$outdir, "plots", "ora_conserved_all_contrasts_bubble.png"),
+  label = "Hallmark"
 )
 
+
+# C7 (new)
+run_ora_enricher(
+  genes = strip_dup_suffix(markers_all),
+  universe = universe_all,
+  pathways_df = pathways_c7,
+  out_tsv = file.path(opt$outdir, "tables", "ora_markers_all_contrasts_c7.tsv"),
+  out_png = file.path(opt$outdir, "plots",  "ora_markers_all_contrasts_c7_bubble.png"),
+  label="C7"
+)
+
+run_ora_enricher(
+  genes = strip_dup_suffix(conserved_all),
+  universe = universe_all,
+  pathways_df = pathways_c7,
+  out_tsv = file.path(opt$outdir, "tables", "ora_conserved_all_contrasts_c7.tsv"),
+  out_png = file.path(opt$outdir, "plots",  "ora_conserved_all_contrasts_c7_bubble.png"),
+  label="C7"
+)
 
 # -------------------------
 # ORA on cross-contrast ANY gene sets (union sets)
@@ -593,16 +681,37 @@ run_ora_enricher(
   universe = universe_any,
   pathways_df = pathways_h,
   out_tsv = file.path(opt$outdir, "tables", "ora_markers_any_contrast.tsv"),
-  out_png = file.path(opt$outdir, "plots", "ora_markers_any_contrast_bubble.png")
+  out_png = file.path(opt$outdir, "plots", "ora_markers_any_contrast_bubble.png"),
+  label="Hallmark"
 )
 
-# OPTIONAL (only if you want conserved_any ORA)
+
 run_ora_enricher(
   genes = strip_dup_suffix(conserved_any),
   universe = universe_any,
   pathways_df = pathways_h,
   out_tsv = file.path(opt$outdir, "tables", "ora_conserved_any_contrast.tsv"),
-  out_png = file.path(opt$outdir, "plots", "ora_conserved_any_contrast_bubble.png")
+  out_png = file.path(opt$outdir, "plots", "ora_conserved_any_contrast_bubble.png"),
+  label="Hallmark"
+)
+
+
+run_ora_enricher(
+  genes = strip_dup_suffix(markers_any),
+  universe = universe_any,
+  pathways_df = pathways_c7,
+  out_tsv = file.path(opt$outdir, "tables", "ora_markers_any_contrast_c7.tsv"),
+  out_png = file.path(opt$outdir, "plots",  "ora_markers_any_contrast_c7_bubble.png"),
+  label="C7"
+)
+
+run_ora_enricher(
+  genes = strip_dup_suffix(conserved_any),
+  universe = universe_any,
+  pathways_df = pathways_c7,
+  out_tsv = file.path(opt$outdir, "tables", "ora_conserved_any_contrast_c7.tsv"),
+  out_png = file.path(opt$outdir, "plots",  "ora_conserved_any_contrast_c7_bubble.png"),
+  label="C7"
 )
 
 
