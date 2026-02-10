@@ -132,6 +132,31 @@ SECTION_TARGETS = {
     "unlock": [],
 }
 
+#HELPERS
+
+def _docker_bind_mount_works(repo_root: Path, image: str) -> bool:
+    """
+    Returns True if Docker can see workflow/Snakefile when bind-mounting repo_root.
+    """
+    test_cmd = [
+        "docker", "run", "--rm",
+        "-v", f"{str(repo_root)}:/work",
+        image,
+        "sh", "-lc", "test -f /work/workflow/Snakefile"
+    ]
+    try:
+        subprocess.run(
+            test_cmd,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            env=os.environ,
+        )
+        return True
+    except Exception:
+        return False
+
+
 def load_donors(configfile: str) -> list[str]:
     with open(configfile) as f:
         cfg = yaml.safe_load(f)
@@ -454,6 +479,29 @@ def main() -> int:
     if targets:
         smk.append("--")
         smk.extend(targets)
+
+    # Fail fast if Docker bind mount is empty/unavailable (prevents misleading Snakefile errors)
+    if not _docker_bind_mount_works(repo_root, args.image):
+        rr = str(repo_root)
+        hint = ""
+        if rr.startswith("/mnt/"):
+            hint = "Hint: running from /mnt/* (Windows drive mount in WSL). Docker Desktop may block these mounts.\n"
+        elif rr.startswith("/home/") or rr.startswith("/root/"):
+            hint = "Hint: running from WSL Linux filesystem path. Some Docker Desktop setups cannot mount WSL paths.\n"
+
+        print(
+            (
+                "ERROR: Docker bind mount failed.\n\n"
+                f"Host path: {repo_root}\n"
+                "Missing inside container: /work/workflow/Snakefile\n\n"
+                f"{hint}"
+                "Check Docker file-sharing settings or run on Linux/macOS.\n"
+            ),
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+
 
     docker = [
         "docker", "run", "--rm", "-i",

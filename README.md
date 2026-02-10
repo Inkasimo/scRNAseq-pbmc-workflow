@@ -202,7 +202,7 @@ The 10x Genomics barcode whitelist is bundled directly in the repository:
 
 This avoids reliance on unstable upstream URLs and ensures reproducible execution.
 
-### Gene sets
+### Gene sets (MSigDB)
 
 Gene sets used for enrichment analyses are stored locally under:
 
@@ -223,8 +223,19 @@ MSigDB C7 (immunologic signatures):
 All enrichment steps (GSEA and ORA) explicitly reference these local files, 
 ensuring that downstream results are reproducible and independent of external downloads.
 
-MSigDB gene sets are redistributed here for reproducibility. MSigDB is developed and maintained
-by the Broad Institute; users should ensure compliance with MSigDB licensing terms when reusing these resources.
+Hallmark (H) and Immunologic Signature (C7) gene sets were obtained from the Molecular Signatures Database 
+(MSigDB, Broad Institute) and are included locally to ensure reproducible execution of the workflow.
+
+Users should ensure compliance with MSigDB licensing terms when reusing these resources.
+`
+```text
+Liberzon A et al. The Molecular Signatures Database (MSigDB) hallmark gene set collection.
+Cell Systems (2015).
+
+Godec J et al. Compendium of Immune Signatures Identifies Conserved and Species-Specific
+Biology in Response to Inflammation. Immunity (2016).
+```
+
 
 ## Workflow
 
@@ -399,8 +410,23 @@ results/
 - Developer / maintainer notes (including environment maintenance,
   STAR indexing details, and Docker CPU behavior) are kept in
   `docs/DEVELOPER_NOTES.md` and are not required to run the workflow.
-
   
+### Windows / WSL / Docker Desktop
+
+This workflow runs inside Docker and bind-mounts the repository into the container.
+
+On Windows, this requires Docker Desktop to have access to the repository path.
+If Docker cannot bind-mount the path, the container will not be able to read
+`workflow/Snakefile`.
+
+If you encounter:
+
+    Snakefile "workflow/Snakefile" not found
+
+check Docker Desktop file-sharing settings, or run the workflow on a Linux or
+macOS system where bind mounts are always available.
+
+
 ## Non-goals
 
 - This pipeline is not intended to benchmark methods or claim novel biological findings.
