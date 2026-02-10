@@ -220,11 +220,10 @@ MSigDB C7 (immunologic signatures):
 
 `c7.all.v2026.1.Hs.symbols.gmt`
 
-All enrichment steps (GSEA and ORA) explicitly reference these local files, 
-ensuring that downstream results are reproducible and independent of external downloads.
 
 Hallmark (H) and Immunologic Signature (C7) gene sets were obtained from the Molecular Signatures Database 
-(MSigDB, Broad Institute) and are included locally to ensure reproducible execution of the workflow.
+(MSigDB, Broad Institute) and are included locally to ensure reproducible execution of the workflow. 
+All enrichment steps (GSEA and ORA) explicitly reference these local files
 
 Users should ensure compliance with MSigDB licensing terms when reusing these resources.
 
