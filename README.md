@@ -227,7 +227,7 @@ Hallmark (H) and Immunologic Signature (C7) gene sets were obtained from the Mol
 (MSigDB, Broad Institute) and are included locally to ensure reproducible execution of the workflow.
 
 Users should ensure compliance with MSigDB licensing terms when reusing these resources.
-`
+
 ```text
 Liberzon A et al. The Molecular Signatures Database (MSigDB) hallmark gene set collection.
 Cell Systems (2015).
