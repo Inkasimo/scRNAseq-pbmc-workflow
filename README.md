@@ -72,7 +72,7 @@ All core tools are provided inside the Docker image, including:
 Pull the versioned release
 
 ```bash
-docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.0
+docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.1
 ```
 
 ### Exact archive (bit-identical to published results)
