@@ -67,7 +67,15 @@ All core tools are provided inside the Docker image, including:
 
 ## Docker image
 
-### Recommended (reproducible)
+### Versioned release (recommended)
+
+Pull the versioned release
+
+```bash
+docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.0
+```
+
+### Exact archive (bit-identical to published results)
 
 Pull the archived Docker image used for the released workflow:
 
@@ -76,13 +84,6 @@ docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow@sha256:80354b76e76405636c43e
 ```
 
 This ensures you are running exactly the same environment used to generate the archived results.
-
-
-### Versioned release
-
-```bash
-docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.0
-```
 
 ### Local build (development only)
 

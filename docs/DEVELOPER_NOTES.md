@@ -218,3 +218,9 @@ docker run --rm -it \
   -v "$PWD:/work" -w /work \
   ghcr.io/inkas/scrnaseq-pbmc-workflow@sha256:abc123deadbeef... \
   snakemake -j 8
+  
+  
+# Push package
+  
+git tag v1.0.0
+git push origin v1.0.0
