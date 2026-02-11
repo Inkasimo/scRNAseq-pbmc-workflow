@@ -11,12 +11,12 @@ ENV RENV_PATHS_CACHE=/opt/renv/cache
 ENV RENV_CONFIG_CACHE_SYMLINKS=FALSE
 
 RUN apt-get update && apt-get install -y \
+    unzip \
     python3 python3-pip \
     git curl wget ca-certificates \
     build-essential \
     zlib1g-dev libbz2-dev liblzma-dev \
     tar gzip pigz \
-    fastqc default-jre \
     vim-common \
     libglpk40 \
     libcurl4-openssl-dev libssl-dev libxml2-dev \
@@ -24,6 +24,14 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev libharfbuzz-dev libfribidi-dev \
 	pkg-config libfontconfig1-dev libcairo2-dev libglib2.0-dev \
     && rm -rf /var/lib/apt/lists/*
+
+ARG FASTQC_VERSION=0.11.9
+RUN curl -L -o /tmp/fastqc.zip \
+    https://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v${FASTQC_VERSION}.zip && \
+    unzip /tmp/fastqc.zip -d /opt && \
+    chmod +x /opt/FastQC/fastqc && \
+    ln -s /opt/FastQC/fastqc /usr/local/bin/fastqc && \
+    rm /tmp/fastqc.zip
 
 # STAR (build from source tag)
 ARG STAR_VERSION=2.7.11b
@@ -41,7 +49,7 @@ RUN R -q -e "install.packages('BiocManager', repos=Sys.getenv('RENV_CONFIG_REPOS
 
 
 # Python tools
-RUN pip3 install --no-cache-dir snakemake==7.32.4 pulp==2.7.0 multiqc cutadapt==4.9
+RUN pip3 install --no-cache-dir snakemake==7.32.4 pulp==2.7.0 multiqc==1.33 cutadapt==4.9
 
 WORKDIR /work
 
