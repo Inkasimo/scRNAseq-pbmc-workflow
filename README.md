@@ -80,7 +80,7 @@ docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.1
 Pull the archived Docker image used for the released workflow:
 
 ```bash
-docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow@sha256:80354b76e76405636c43e73902236e0399d26978a214227afbafa46fc0555bb8
+docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.1@sha256:eb2088a226b132bd328d68bb2f99069f22e1be242a32e6d493c184a26ef93e61
 ```
 
 This ensures you are running exactly the same environment used to generate the archived results.
