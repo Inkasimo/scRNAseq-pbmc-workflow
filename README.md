@@ -77,7 +77,14 @@ docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow@sha256:80354b76e76405636c43e
 
 This ensures you are running exactly the same environment used to generate the archived results.
 
-### Optional 
+
+### Versioned release
+
+```bash
+docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.0
+```
+
+### Local build (development only)
 
 To build the image locally instead:
 
