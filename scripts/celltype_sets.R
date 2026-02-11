@@ -17,3 +17,5 @@ network_sets <- list(
   B_cells    = c("B_cells"),
   CD14_mono = c("CD14_Mono")
 )
+
+#network_sets=deg_sets
