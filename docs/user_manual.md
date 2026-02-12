@@ -183,13 +183,31 @@ Refer to the User Manual section on WSL2 configuration for details.
 This section shows the simplest way to run the pipeline using the provided
 defaults. No configuration changes are required.
 
-### 1. Build Docker image
+### Docker images
 
-From the repository root:
+This workflow can be executed using a versioned release, a digest-pinned archival image, or a local development build.
+
+#### Versioned Release (recommended)
+
+```bash
+docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.1
+```
+
+#### Exact Archival Image (Digest-Pinned)
+
+```bash
+docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow@sha256:80354b76e76405636c43e73902236e0399d26978a214227afbafa46fc0555bb8
+````
+
+Use this image when strict reproducibility of archived results is required.
+
+#### Local Development Build
 
 ```bash
 docker build -t scrnaseq-workflow -f containers/Dockerfile .
 ```
+
+Local builds are intended for development and testing. They are not guaranteed to be bit-identical to published container releases.
 
 ### 2. (Optional) Install wrapper dependencies
 
@@ -284,6 +302,7 @@ based on the selected execution section (e.g. data download, trimming, alignment
 
 These overrides are applied at runtime and do not permanently modify
 config/config.yaml.
+
 
 ### Configuration and Reproducibility
 
@@ -521,8 +540,30 @@ python3 run_analysis.py align \
   --set-threads starsolo=8
 ```
 
+## 7. Using a Custom Docker Image with the Wrapper
 
-## 7. Running the Workflow Directly with Snakemake
+If you are using a digest-pinned image or a locally built image instead of the versioned release, 
+you must explicitly define the Docker image when invoking the wrapper:
+
+```bash
+python3 run_analysis.py all --image <image_reference>
+
+```
+
+Example (digest-pinned image):
+
+```bash
+python3 run_analysis.py all --image ghcr.io/inkasimo/scrnaseq-pbmc-workflow@sha256:80354b76e76405636c43e73902236e0399d26978a214227afbafa46fc0555bb8
+```
+
+Example (local build):
+
+```bash
+python3 run_analysis.py all --image scrnaseq-workflow
+```
+
+
+## 8. Running the Workflow Directly with Snakemake
 
 The workflow can be executed directly using Snakemake inside the Docker container.
 This mode provides maximal transparency and control but requires familiarity with
@@ -570,7 +611,7 @@ Only the rules required to produce the specified target will be executed.
 - Partial outputs may remain after interruptions and should be handled carefully
 
 
-## 8. Outputs and Directory Layout
+## 9. Outputs and Directory Layout
 
 The pipeline produces outputs under a small number of top-level directories.
 Large data and generated results are intentionally excluded from version control.
@@ -621,7 +662,7 @@ A .done file:
 The presence or absence of a `.done` file determines whether a step will be
 considered complete by the workflow.
 
-## 9. Trimming (Optional)
+## 10. Trimming (Optional)
 
 Read trimming is optional and disabled by default in this pipeline.
 
@@ -672,7 +713,7 @@ Trimming parameters are defined in `config/config.yaml`, including:
 - Minimum read length
 
 
-## 10. Troubleshooting
+## 11. Troubleshooting
 
 ### Snakemake Lock Errors
 
@@ -730,7 +771,7 @@ This is not specific to the pipeline and reflects Docker runtime behavior.
 If resource usage appears higher than expected after an interruption, verify that
 no stale containers are running and stop them if necessary.
 
-## 11. Limitations and Planned Extensions
+## 12. Limitations and Planned Extensions
 
 ### Scope Limitations
 

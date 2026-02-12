@@ -33,13 +33,14 @@ This repository is intended as a **technical portfolio / learning project**.
 - Reference preparation (barcode whitelist, STAR index)
 - STARsolo alignment and gene–cell count matrix generation
 
-### Downstream (work in progress)
+### Downstream 
 
 - Seurat objects
 - Cell-level QC and annotation
 - Differential expression (DESeq2) and equivalence testing (TOST)
 - Enrichment analysis
-- Co-expression network analysis (work in progress)
+- Co-expression network analysis 
+- Network module Enrichment
 
 ## Requirements
 
@@ -65,57 +66,21 @@ All core tools are provided inside the Docker image, including:
 
 - Python ≥3.9 (used only for the execution wrapper)
 
-## Docker image
+## How to run
 
-### Versioned release (recommended)
-
-Pull the versioned release
+### 1. Pull docker image (versioned release)
 
 ```bash
 docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.1
 ```
 
-### Exact archive (bit-identical to published results)
+Detailed execution instructions, archival image digests, and local development builds are described in the User Manual:
+docs/user_manual.md
 
-Pull the archived Docker image used for the released workflow:
 
-```bash
-docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow@sha256:80354b76e76405636c43e73902236e0399d26978a214227afbafa46fc0555bb8
-```
+### Workflow execution
 
-This ensures you are running exactly the same environment used to generate the archived results.
-
-### Local build (development only)
-
-To build the image locally instead:
-
-```bash
-docker build -t scrnaseq-workflow -f containers/Dockerfile .
-```
-
-Local builds are not guaranteed to be bit-identical to the archived environment.
-
-### Note
-
-- If you are using exact archive or local build as an docker image instead of versioned release, 
-with the wrapper you need to define the docker image with `--image` -flag
-
-## How to run
-
-This workflow can be run in **two ways**:
-
-1. **Via the Python wrapper** (`run_analysis.py`) – recommended
-   
-- Section-based execution
-- Explicit control over what runs
-- Prevents accidental full runs
-
-2. **Directly with Snakemake inside Docker**   
-
-Most users should use the **wrapper**. 
-
-### Option A: Python wrapper (recommended)
-
+### Execution with python wrapper (recommended)
 
 #### Wrapper requirements (host-side only)
 
@@ -180,7 +145,9 @@ python3 run_analysis.py all --trimmed
 
 ```
 
-### Option B: Direct Snakemake (no wrapper)
+### Execution directly with Snakemake (no wrapper)
+
+This workflow can be run in **Directly with Snakemake inside Docker** 
 
 ****Dry run****
 
@@ -423,22 +390,6 @@ results/
   STAR indexing details, and Docker CPU behavior) are kept in
   `docs/DEVELOPER_NOTES.md` and are not required to run the workflow.
   
-### Windows / WSL / Docker Desktop
-
-This workflow runs inside Docker and bind-mounts the repository into the container.
-
-On Windows, this requires Docker Desktop to have access to the repository path.
-If Docker cannot bind-mount the path, the container will not be able to read
-`workflow/Snakefile`.
-
-If you encounter:
-
-    Snakefile "workflow/Snakefile" not found
-
-check Docker Desktop file-sharing settings, or run the workflow on a Linux or
-macOS system where bind mounts are always available.
-
-
 ## Non-goals
 
 - This pipeline is not intended to benchmark methods or claim novel biological findings.
