@@ -1,9 +1,8 @@
 # scRNA-seq PBMC Workflow
 
-Production-style scRNA-seq analysis pipeline
-using **Docker + Snakemake** with a Python CLI wrapper.
+Production-style scRNA-seq analysis pipeline built with **Snakemake and Docker**, with explicit execution control via a **Python CLI wrapper**.
 
-This repository is intended as a **technical portfolio / learning project**.
+Demonstrates reproducible, modular, and fully containerized end-to-end analysis from FASTQ to downstream statistical modeling.
 
 ## Status:
 - Draft — core pipeline implemented; downstream analyses in progress.
