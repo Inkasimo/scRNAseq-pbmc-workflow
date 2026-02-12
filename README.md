@@ -75,7 +75,7 @@ docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.1
 ```
 
 Detailed execution instructions, archival image digests, and local development builds are described in the User Manual:
-docs/user_manual.md
+`docs/user_manual.md`
 
 
 ### Workflow execution
