@@ -333,7 +333,7 @@ run_analysis.py       # Optional Python wrapper for section-based execution
 
 Project documentation is organized under the `docs/` directory:
 
-- **Technical report (PDF)** – describes architectural decisions, biological rationale, and statistical methodology **(Work in progress)**.
+- **Technical report (`docs/scRNAseq-pbmc-worflow-report.pdf`)** – describes architectural decisions, biological rationale, and statistical methodology **(Work in progress)**.
 - **User manual (`docs/user_manual.md`)** – provides execution instructions, Docker image usage, and wrapper configuration details.
 - Representative Result discovery layout represented in `docs/results_layout.md`.
 
