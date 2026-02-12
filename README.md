@@ -39,8 +39,8 @@ This repository is intended as a **technical portfolio / learning project**.
 - Cell-level QC and annotation
 - Differential expression (DESeq2) and equivalence testing (TOST)
 - Enrichment analysis
-- Co-expression network analysis 
-- Network module Enrichment
+- Co-expression network analysis and network modules
+- Module enrichment analysis
 
 ## Requirements
 
@@ -321,7 +321,7 @@ results/              # Outputs and logs (not versioned)
 	deg_and_tost/     # DEG and TOST analysis results
 	seurat/           # Seurat objects and related plots and tables
 	networks/         # Network analysis results (Work in progress)
-docs/                 # Documentation (user manual, report, notes)
+docs/                 # Documentation (user manual, report, notes, results layout)
   example_outputs/    # A small set of representative execution artifacts
 scripts/              # R-scripts and helpers
 run_analysis.py       # Optional Python wrapper for section-based execution
@@ -329,53 +329,10 @@ run_analysis.py       # Optional Python wrapper for section-based execution
 
 ## Representative Results Directory Layout (Example Run)
 
-```text
-results/
-├── qc/
-│   ├── fastqc/
-│   │   └── raw/
-│   │       ├── donor1/
-│   │       ├── donor2/
-│   │       ├── donor3/
-│   │       └── donor4/
-│   └── multiqc/
-│       └── raw/
-│           ├── multiqc_report.html
-│           └── multiqc_report_data/
-├── alignment/
-│   └── starsolo/
-│       └── raw/
-│           ├── donor1/
-│           ├── donor2/
-│           ├── donor3/
-│           └── donor4/
-├── downstream/
-│   ├── seurat/
-│   │   └── untrimmed/
-│   │       ├── donor1/
-│   │       ├── donor2/
-│   │       ├── donor3/
-│   │       └── donor4/
-│   ├── deg_and_tost/
-│   │   └── untrimmed/
-│   │       └── deg_and_tost/
-│   └── networks/
-│       └── untrimmed/
-│           ├── consensus/
-│           ├── per_donor/
-│           ├── plots/
-│           └── tables/
-└── logs/
-    ├── qc/
-    ├── alignment/
-    ├── download/
-    └── ref/
-
-
-```
-
+Representative Result discovery layout represented in `docs/results_layout.md`.
 
 ## Notes
+
 - Large data files are excluded via `.gitignore`
 - FASTQ downloading is controlled via `io.download_fastqs` in `config/config.yaml`  
   (automatically set by the wrapper for relevant sections)
@@ -386,9 +343,6 @@ results/
 - R package versions inside the Docker image are managed with `renv`
   to ensure reproducible R environments.
   Users do not need to interact with `renv` directly.
-- Developer / maintainer notes (including environment maintenance,
-  STAR indexing details, and Docker CPU behavior) are kept in
-  `docs/DEVELOPER_NOTES.md` and are not required to run the workflow.
   
 ## Non-goals
 
