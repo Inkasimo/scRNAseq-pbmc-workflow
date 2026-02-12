@@ -330,9 +330,13 @@ scripts/              # R-scripts and helpers
 run_analysis.py       # Optional Python wrapper for section-based execution
 ```
 
-## Representative Results Directory Layout (Example Run)
+## Documentation Structure
 
-Representative Result discovery layout represented in `docs/results_layout.md`.
+Project documentation is organized under the `docs/` directory:
+
+- **Technical report (PDF)** – describes architectural decisions, biological rationale, and statistical methodology **(Work in progress)**.
+- **User manual (`docs/user_manual.md`)** – provides execution instructions, Docker image usage, and wrapper configuration details.
+- Representative Result discovery layout represented in `docs/results_layout.md`.
 
 ## Notes
 
