@@ -225,16 +225,19 @@ Biology in Response to Inflammation. Immunity (2016).
 config/config.yaml
         |
         v
-run_analysis.py
-(section-based CLI)
+run_analysis.py  (host-side CLI wrapper)
         |
         v
-Snakemake DAG
-(workflow logic)
+docker run -v $PWD:/work -w /work ...  (bind-mount repo)
         |
         v
-Docker container
-(reproducible execution environment)
++------------------------------------------------------+
+|                  Docker Container                    |
+|                                                      |
+|  Snakemake (workflow/Snakefile) → rules → tools      |
+|                                                      |
++------------------------------------------------------+
+
 
 ```
 
