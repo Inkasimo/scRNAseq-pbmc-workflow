@@ -1,8 +1,5 @@
 # User manual
 
-## 0. Status
-
-Upstream stable; downstream partially implemented; network module not implemented.
 
 ## 1. Purpose and Scope
 
