@@ -333,9 +333,9 @@ run_analysis.py       # Optional Python wrapper for section-based execution
 
 Project documentation is organized under the `docs/` directory:
 
-- **Workflow summary** (`docs/workflow_summary.pdf`) — concise 6–8 page technical overview highlighting architecture, reproducibility strategy, statistical modeling, and representative results.  
+- **Workflow summary** (`docs/workflow_summary.pdf`) — concise 6 page technical overview highlighting architecture, reproducibility strategy, statistical modeling, and representative results.  
   *(Recommended starting point.)*
-- **Technical report (full)** (`docs/scRNAseq-pbmc-worflow-report_full.pdf`) — comprehensive documentation of architectural decisions, biological rationale, statistical methodology, and extended results. *(Work in progress.)*
+- **Technical report (full)** (`docs/scRNAseq-pbmc-worflow-report_full.pdf`) — comprehensive documentation of architectural decisions, biological rationale, statistical methodology, and extended results.
 - **User manual** (`docs/user_manual.md`) — execution instructions, Docker image usage, and wrapper configuration details.
 - **Results layout** (`docs/results_layout.md`) — representative output directory structure for result discovery and navigation.
 
