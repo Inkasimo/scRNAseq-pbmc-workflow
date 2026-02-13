@@ -771,6 +771,21 @@ This is not specific to the pipeline and reflects Docker runtime behavior.
 If resource usage appears higher than expected after an interruption, verify that
 no stale containers are running and stop them if necessary.
 
+### Windows / WSL / Docker Desktop
+
+This workflow runs inside Docker and bind-mounts the repository into the container.
+
+On Windows, this requires Docker Desktop to have access to the repository path.
+If Docker cannot bind-mount the path, the container will not be able to read
+`workflow/Snakefile`.
+
+If you encounter:
+
+    Snakefile "workflow/Snakefile" not found
+
+check Docker Desktop file-sharing settings, or run the workflow on a Linux or
+macOS system where bind mounts are always available.
+
 ## 12. Limitations and Planned Extensions
 
 ### Scope Limitations
