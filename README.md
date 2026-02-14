@@ -33,6 +33,8 @@ First pull may take several minutes (image ~1.5 GB).
 
 ### 3. Install wrapper dependency (host only)
 
+- Ensure venv support is available (Linux users may need python3-venv installed)
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
@@ -139,7 +141,7 @@ All core tools are provided inside the Docker image, including:
 
 ### Optional (wrapper only)
 
-- Python ≥3.9 (used only for the execution wrapper)
+- Python ≥3.9 with venv support (used only for the execution wrapper)
 
 
 ### 1. Pull docker image 
