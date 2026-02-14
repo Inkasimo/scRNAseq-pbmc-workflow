@@ -91,7 +91,7 @@ def starsolo_done(donor, mode):
     return f"results/alignment/starsolo/{mode}/{donor}/starsolo.done"
 
 
-ddef resolve_fastq_dir(donor):
+def resolve_fastq_dir(donor):
     base = f"data/raw/{donor}"
 
     r1 = sorted(glob.glob(os.path.join(base, "**", "*_R1_*.fastq.gz"), recursive=True))
