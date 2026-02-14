@@ -20,13 +20,13 @@ FASTQ → QC → STARsolo → Seurat → DESeq2/TOST → enrichment → network 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/Inkasimo/scRNAseq-pbmc-workflow.git
+git clone https://github.com/inkasimo/scRNAseq-pbmc-workflow.git
 ```
 
 ### 2. Pull the versioned Docker image (in repository)
 
 ```bash
-docker pull ghcr.io/Inkasimo/scrnaseq-pbmc-workflow:v1.0.3
+docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.3
 ```
 
 First pull may take several minutes (image ~1.5 GB).
