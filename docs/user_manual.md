@@ -187,13 +187,13 @@ This workflow can be executed using a versioned release, a digest-pinned archiva
 #### Versioned Release (recommended)
 
 ```bash
-docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.3
+docker pull ghcr.io/Inkasimo/scrnaseq-pbmc-workflow:v1.0.3
 ```
 
 #### Exact Archival Image (Digest-Pinned)
 
 ```bash
-docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow@sha256:80354b76e76405636c43e73902236e0399d26978a214227afbafa46fc0555bb8
+docker pull ghcr.io/Inkasimo/scrnaseq-pbmc-workflow@sha256:80354b76e76405636c43e73902236e0399d26978a214227afbafa46fc0555bb8
 ````
 
 Use this image when strict reproducibility of archived results is required.
@@ -550,7 +550,7 @@ python3 run_analysis.py all --image <image_reference>
 Example (digest-pinned image):
 
 ```bash
-python3 run_analysis.py all --image ghcr.io/inkasimo/scrnaseq-pbmc-workflow@sha256:80354b76e76405636c43e73902236e0399d26978a214227afbafa46fc0555bb8
+python3 run_analysis.py all --image ghcr.io/Inkasimo/scrnaseq-pbmc-workflow@sha256:80354b76e76405636c43e73902236e0399d26978a214227afbafa46fc0555bb8
 ```
 
 Example (local build):

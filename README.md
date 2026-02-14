@@ -14,18 +14,18 @@ FASTQ → QC → STARsolo → Seurat → DESeq2/TOST → enrichment → network 
 
 Runs a chromosome 1 mini-reference with downsampled FASTQs.
 Execution time: ~5–10 minutes after image pull and toy data download.
-Download size: ~2.1 GB (toy bundle) (may take a few minutes)
+Download size: ~ 81.3 MB (toy bundle) 
 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/inkasimo/scRNAseq-pbmc-workflow.git
+git clone https://github.com/Inkasimo/scRNAseq-pbmc-workflow.git
 ```
 
 ### 2. Pull the versioned Docker image (in repository)
 
 ```bash
-docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.3
+docker pull ghcr.io/Inkasimo/scrnaseq-pbmc-workflow:v1.0.3
 ```
 
 First pull may take several minutes (image ~1 GB).
