@@ -210,11 +210,16 @@ Local builds are intended for development and testing. They are not guaranteed t
 
 The Python wrapper requires a local Python installation (≥ 3.9) and one dependency.
 
-```bash 
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r wrapper-requirements.txt
 ```
 
-If you choose not to use the wrapper, this step can be skipped.
+Required only if using run_analysis.py.
+Not needed if running Snakemake directly via Docker.
+
+Activate the environment every time before using run_analysis.py.
 
 ### 3. Run the pipeline (wrapper)
 

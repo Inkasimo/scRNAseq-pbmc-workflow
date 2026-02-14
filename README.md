@@ -34,11 +34,15 @@ First pull may take several minutes (image ~1.5 GB).
 ### 3. Install wrapper dependency (host only)
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r wrapper-requirements.txt
 ```
 
-Only installs pyyaml.
-Not required if running Snakemake manually.
+Required only if using run_analysis.py.
+Not needed if running Snakemake directly via Docker.
+
+Activate the environment before using run_analysis.py.
 
 ### 4. Download toy bundle
 
