@@ -121,7 +121,7 @@ DEG_ENABLED = as_bool(config.get("deg_and_tost", {}).get("enabled", True))
 NET_ENABLED = as_bool(config.get("network", {}).get("enabled", True))
 CLUST_ENABLED=as_bool(config.get("seurat_cluster_annot", {}).get("enabled", True))
 FILT_NORM_ENABLED=as_bool(config.get("seurat_filt_normalize", {}).get("enabled", True))
-
+WORKFLOW_TARGET = str(config.get("workflow_target", "all"))
 
 
 rule all:
@@ -129,6 +129,12 @@ rule all:
         # Always ensure reference is present
         STAR_INDEX_DONE,
         WHITELIST_DONE,
+
+        (
+            expand("data/raw/{donor}/fastqs.done", donor=DONORS)
+            if WORKFLOW_TARGET != "toy"
+            else expand("data/toy/{donor}/fastqs.done", donor=DONORS)
+        ),
 
         # Always ensure raw FASTQs are present (source for everything)
         expand("data/raw/{donor}/fastqs.done", donor=DONORS),
