@@ -28,7 +28,7 @@ git clone https://github.com/Inkasimo/scRNAseq-pbmc-workflow.git
 docker pull ghcr.io/Inkasimo/scrnaseq-pbmc-workflow:v1.0.3
 ```
 
-First pull may take several minutes (image ~1 GB).
+First pull may take several minutes (image ~1.5 GB).
 
 ### 3. Install wrapper dependency (host only)
 
@@ -47,7 +47,7 @@ python3 run_analysis.py download_toy
 This downloads and extracts:
 
 - `data/ref/toy/` (chr1 reference files)
-- `data/toy/donor1/` (toy FASTQs))
+- `data/toy/donor1/` (toy FASTQs)
 
 
 ### 5. Run toy workflow

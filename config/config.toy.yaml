@@ -36,7 +36,7 @@ seurat_normalization:
   scale_factor: 10000
   hvg_method: "vst"
   hvg_nfeatures: 1000
-  vars_to_regress: ["percent.mt"]
+  vars_to_regress: []
   scale_features: "hvg"
 
 seurat_annotation:
