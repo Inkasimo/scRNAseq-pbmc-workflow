@@ -61,9 +61,6 @@ def as_bool(x, default=False):
         return x.strip().lower() in ("1", "true", "t", "yes", "y", "on")
     return bool(x)
 
-DOWNLOAD_FASTQS = as_bool(config.get("download_fastqs", None),
-                         default=as_bool(config.get("io", {}).get("download_fastqs", False)))
-
 BUILD_STAR_INDEX = as_bool(config.get("build_star_index", None),
                            default=as_bool(config.get("ref", {}).get("build_star_index", True)))
 
@@ -94,17 +91,8 @@ def starsolo_done(donor, mode):
     return f"results/alignment/starsolo/{mode}/{donor}/starsolo.done"
 
 
-def resolve_fastq_dir(donor):
-    # If we are downloading, the canonical base is the workflow-managed raw folder
-    if DOWNLOAD_FASTQS:
-        base = f"data/raw/{donor}"
-        done = Path(base) / "fastqs.done"
-        if not done.exists():
-            return base
-    else:
-        base = config["pbmc"][donor].get("fastq_base", config["pbmc"][donor].get("fastq_dir"))
-        if base is None:
-            raise ValueError(f"{donor}: need pbmc.{donor}.fastq_base (or fastq_dir)")
+ddef resolve_fastq_dir(donor):
+    base = f"data/raw/{donor}"
 
     r1 = sorted(glob.glob(os.path.join(base, "**", "*_R1_*.fastq.gz"), recursive=True))
     r2 = sorted(glob.glob(os.path.join(base, "**", "*_R2_*.fastq.gz"), recursive=True))
@@ -115,7 +103,6 @@ def resolve_fastq_dir(donor):
     from collections import Counter
     r1_dirs = Counter(os.path.dirname(x) for x in r1)
     return r1_dirs.most_common(1)[0][0]
-
 
 
 
@@ -194,56 +181,46 @@ rule all:
 
 # TODO: Deal with the output folder ambiguity
 
-if DOWNLOAD_FASTQS:
-    rule download_fastqs:
-        output:
-            tar="data/raw/{donor}/fastqs.tar",
-            done="data/raw/{donor}/fastqs.done"
-        params:
-            url=lambda wc: config["pbmc"][wc.donor]["url"]
-        log:
-            "results/logs/download/{donor}.log"
-        shell:
-            r"""
-            set -euo pipefail
-            mkdir -p data/raw/{wildcards.donor}
-            mkdir -p results/logs/download
+rule ensure_fastqs:
+    output:
+        done="data/raw/{donor}/fastqs.done"
+    params:
+        url=lambda wc: config["pbmc"][wc.donor]["url"],
+        fqdir=lambda wc: f"data/raw/{wc.donor}"
+    log:
+        "results/logs/download/{donor}.log"
+    shell:
+        r"""
+        set -euo pipefail
 
-            echo "[START] $(date)" > {log}
-            echo "URL: {params.url}" >> {log}
+        mkdir -p {params.fqdir}
+        mkdir -p results/logs/download
 
-            wget --continue \
-                 --tries=50 \
-                 --waitretry=10 \
-                 --read-timeout=30 \
-                 --timeout=30 \
-                 -O {output.tar} "{params.url}" >> {log} 2>&1
-
-            tar -xf {output.tar} -C data/raw/{wildcards.donor} >> {log} 2>&1
-
+        if ls {params.fqdir}/*_R1_*.fastq.gz >/dev/null 2>&1 && \
+           ls {params.fqdir}/*_R2_*.fastq.gz >/dev/null 2>&1; then
+            echo "FASTQs already present." > {log}
             tmp="{output.done}.tmp"
             echo ok > "$tmp"
             mv -f "$tmp" "{output.done}"
+            exit 0
+        fi
 
-            echo "[END] $(date)" >> {log}
-            """
-else:
-    rule fastqs_present:
-        output:
-            done="data/raw/{donor}/fastqs.done"
-        params:
-            fqdir=lambda wc: resolve_fastq_dir(wc.donor)
-        shell:
-            r"""
-            set -euo pipefail
-            test -d "{params.fqdir}"
-            ls "{params.fqdir}"/*_R1_*.fastq.gz >/dev/null
-            ls "{params.fqdir}"/*_R2_*.fastq.gz >/dev/null
-            mkdir -p "$(dirname "{output.done}")"
-            tmp="{output.done}.tmp"
-            echo ok > "$tmp"
-            mv -f "$tmp" "{output.done}"
-            """
+        echo "Downloading FASTQs..." > {log}
+
+        wget --continue \
+             --tries=50 \
+             --waitretry=10 \
+             --read-timeout=30 \
+             --timeout=30 \
+             -O {params.fqdir}/fastqs.tar "{params.url}" >> {log} 2>&1
+
+        tar -xf {params.fqdir}/fastqs.tar -C {params.fqdir} >> {log} 2>&1
+
+        tmp="{output.done}.tmp"
+        echo ok > "$tmp"
+        mv -f "$tmp" "{output.done}"
+        """
+
 
 
 # ---- QC ----
