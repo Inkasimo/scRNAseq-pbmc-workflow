@@ -39,7 +39,7 @@ pip install -r wrapper-requirements.txt
 Only installs pyyaml.
 Not required if running Snakemake manually.
 
-### 4. Download toy bundle (81.3 MB)
+### 4. Download toy bundle
 
 ```bash
 python3 run_analysis.py download_toy
@@ -51,6 +51,11 @@ This downloads and extracts:
 
 
 ### 5. Run toy workflow
+
+**Dry run:**
+```bash
+python3 run_analysis.py toy --dry-run
+```
 
 **Raw mode:**
 ```bash
