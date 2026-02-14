@@ -1,0 +1,60 @@
+# config/config.toy.yaml
+pbmc:
+  donor1:
+    url: ""
+    fastq_base: "data/toy/donor1"
+
+resources:
+  fastqc_threads: 2
+  star_threads: 8
+  cutadapt_threads: 2
+
+trim:
+  enabled: false
+  adapter_r2: "AGATCGGAAGAG"
+  q_r2: 20
+  minlen_r2: 60
+
+io:
+  download_fastqs: false
+
+ref:
+  genome_fasta: "data/ref/toy/GRCh38.chr1.fa"
+  gtf: "data/ref/toy/gencode.v45.chr1.gtf"
+  star_index: "data/ref/toy/star_index_chr1"
+  star_index_done: "data/ref/toy/star_index_chr1/index.done"
+
+  whitelist: "resources/barcodes/3M-3pgex-may-2023_TRU.txt"
+  whitelist_done: "data/ref/toy/whitelist.done"
+
+  build_star_index: false
+
+seurat_normalization:
+  method: "LogNormalize"
+  scale_factor: 10000
+  hvg_method: "vst"
+  hvg_nfeatures: 1000
+  vars_to_regress: ["percent.mt"]
+  scale_features: "hvg"
+
+seurat_annotation:
+  dims: 20
+  resolution: 0.2
+  seed: 42
+
+genesets:
+  hallmark_gmt: "resources/genesets/h.all.v2026.1.Hs.symbols.gmt"
+  c7_gmt: "resources/genesets/c7.all.v2026.1.Hs.symbols.gmt"
+
+deg_and_tost:
+  assay: "RNA"
+  min_baseMean: 10
+  min_cells_per_group: 50
+  seed: 42
+  marker_padj: 1e-10
+  marker_lfc: 3
+  equiv_alpha: 0.01
+  equiv_delta: 0.75
+
+network:
+  enabled: false

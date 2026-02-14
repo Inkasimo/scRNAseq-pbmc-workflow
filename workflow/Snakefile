@@ -18,6 +18,9 @@ CUTADAPT_THREADS = int(config.get("resources", {}).get("cutadapt_threads", 4))
 TRIM_R2_ADAPTER = str(config.get("trim", {}).get("adapter_r2", "AGATCGGAAGAG"))
 TRIM_R2_QUAL = int(config.get("trim", {}).get("q_r2", 20))
 TRIM_R2_MINLEN = int(config.get("trim", {}).get("minlen_r2", 20))
+STAR_INDEX_DONE = config.get("ref", {}).get("star_index_done", "data/ref/star_index.done")
+WHITELIST_DONE  = config.get("ref", {}).get("whitelist_done",  "data/ref/whitelist.done")
+
 
 # Canonical → legacy path mapping (DO NOT change legacy folder names)
 # STARsolo uses "raw" internally; preserve on-disk layout for compatibility
@@ -121,8 +124,8 @@ def resolve_fastq_dir(donor):
 rule all:
     input:
         # Always ensure reference is present
-        "data/ref/star_index.done",
-        "data/ref/whitelist.done",
+        STAR_INDEX_DONE,
+        WHITELIST_DONE,
 
         # Always ensure raw FASTQs are present (source for everything)
         expand("data/raw/{donor}/fastqs.done", donor=DONORS),
@@ -494,7 +497,7 @@ if BUILD_STAR_INDEX:
             gtf=config["ref"]["gtf"]
         output:
             idx=directory(config["ref"]["star_index"]),
-            done="data/ref/star_index.done"
+            done=STAR_INDEX_DONE
         threads: STAR_THREADS
         params:
             sjdbOverhang=89
@@ -523,7 +526,7 @@ else:
     rule star_index_present:
         output:
             idx=directory(config["ref"]["star_index"]),
-            done="data/ref/star_index.done"
+            done=STAR_INDEX_DONE
         log:
             "results/logs/ref/star_index_present.log"
         shell:
@@ -547,7 +550,7 @@ rule whitelist_present:
     input:
         wl=config["ref"]["whitelist"]
     output:
-        done="data/ref/whitelist.done"
+        done=WHITELIST_DONE
     shell:
         r"""
         set -euo pipefail
@@ -572,9 +575,9 @@ rule starsolo_raw:
         "results/logs/alignment/starsolo_raw_{donor}.log"
     input:
         idx=config["ref"]["star_index"],
-        index_done="data/ref/star_index.done",
+        index_done=STAR_INDEX_DONE,
         wl=config["ref"]["whitelist"],
-        wl_done="data/ref/whitelist.done",
+        wl_done=WHITELIST_DONE,
         fastqs_done="data/raw/{donor}/fastqs.done",
     output:
         done="results/alignment/starsolo/raw/{donor}/starsolo.done"
@@ -621,9 +624,9 @@ rule starsolo_trimmed:
         "results/logs/alignment/starsolo_trimmed_{donor}.log"
     input:
         idx=config["ref"]["star_index"],
-        index_done="data/ref/star_index.done",
+        index_done=STAR_INDEX_DONE,
         wl=config["ref"]["whitelist"],
-        wl_done="data/ref/whitelist.done",
+        wl_done=WHITELIST_DONE,
         trim_done="data/trimmed/{donor}/trim.done",
     output:
         done="results/alignment/starsolo/trimmed/{donor}/starsolo.done"

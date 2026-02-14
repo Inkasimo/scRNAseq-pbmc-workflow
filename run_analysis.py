@@ -134,6 +134,12 @@ SECTION_TARGETS = {
 
 #HELPERS
 
+DEFAULT_TOY_ZENODO_URL = (
+    "https://zenodo.org/records/18640321/files/"
+    "toy_data_bundle.tar.gz?download=1"
+)
+
+
 def _docker_bind_mount_works(repo_root: Path, image: str) -> bool:
     """
     Returns True if Docker can see workflow/Snakefile when bind-mounting repo_root.
@@ -168,6 +174,7 @@ def q(x: str) -> str:
 def run(cmd: list[str]) -> int:
     print("Running:\n  " + " \\\n  ".join(q(c) for c in cmd))
     return subprocess.call(cmd)
+
 
 def main() -> int:
     p = argparse.ArgumentParser(
@@ -273,11 +280,22 @@ def main() -> int:
     sp_unlock = sub.add_parser("unlock")
     add_common(sp_unlock)
 
+    # ---- TOY MODE ----
+    sp_toy = sub.add_parser("toy")
+    sp_toy.add_argument("--trimmed", action="store_true")
+    add_common(sp_toy)
+
+    sp_download_toy = sub.add_parser("download_toy")
+    sp_download_toy.add_argument("--zenodo-url", required=False)
+
+
     args = p.parse_args()
 
     if args.list_sections:
         print("Available sections:")
         for s in [
+            "download_toy",
+            "toy",
             "download_data",
             "download_data_and_qc",
             "qc",
@@ -308,6 +326,41 @@ def main() -> int:
     if not args.section:
         p.error("You must choose a section to run.")
 
+    if args.section == "download_toy":
+        import urllib.request
+        import tarfile
+
+        url = args.zenodo_url or DEFAULT_TOY_ZENODO_URL
+        if not url or "18640321" in url:
+            print("ERROR: Provide --zenodo-url or set DEFAULT_TOY_ZENODO_URL to a real Zenodo file URL.")
+            return 2
+
+        if Path("data/ref/toy").exists() and Path("data/toy").exists():
+            print("Toy bundle already extracted (data/ref/toy and data/toy exist). Skipping download.")
+            return 0
+
+        tar_path = "toy_data_bundle.tar.gz"
+
+        print(f"Downloading toy bundle from {url}")
+        urllib.request.urlretrieve(url, tar_path)
+
+        def safe_extract(tar: tarfile.TarFile, path: str = ".") -> None:
+            base = Path(path).resolve()
+            for m in tar.getmembers():
+                dest = (base / m.name).resolve()
+                if not str(dest).startswith(str(base) + os.sep):
+                    raise RuntimeError(f"Unsafe path in tar: {m.name}")
+            tar.extractall(path)
+
+        print("Extracting toy bundle...")
+        with tarfile.open(tar_path, "r:gz") as tar:
+            safe_extract(tar, ".")
+
+        print("Toy bundle ready.")
+        return 0
+
+
+
     try:
         repo_root = Path.cwd()
     except FileNotFoundError:
@@ -324,6 +377,12 @@ def main() -> int:
         return 2
 
     donors = load_donors(args.configfile)
+
+    # ---- Toy config override ----
+    if args.section == "toy":
+        args.configfile = "config/config.toy.yaml"
+        donors = load_donors(args.configfile)
+
 
     # Resolve targets
     targets: list[str] = []
@@ -422,7 +481,7 @@ def main() -> int:
 
 
 
-    elif args.section in ("all", "all_no_download", "unlock"):
+    elif args.section in ("all", "all_no_download", "toy", "unlock"):
         targets = []
 
     # Build snakemake command
@@ -451,7 +510,7 @@ def main() -> int:
     if args.section in ("download_data", "download_data_and_qc", "all", "upstream"):
         config_overrides.append("download_fastqs=true")
 
-    if args.section in ("ref", "all", "upstream", "upstream_no_download"):
+    if args.section in ("ref", "all", "upstream", "upstream_no_download") and args.section != "toy":
         config_overrides.append("build_star_index=true")
 
     if args.section in ("all_no_download", "upstream_no_download"):
@@ -460,6 +519,10 @@ def main() -> int:
     if config_overrides:
         smk.append("--config")
         smk.extend(config_overrides)
+    
+    if args.section == "toy":
+        smk.append("all")
+
 
     if args.dry_run:
         smk.append("-n")

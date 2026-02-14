@@ -1,3 +1,6 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18640320.svg)](https://doi.org/10.5281/zenodo.18640320)
+
+
 # scRNA-seq PBMC Workflow
 
 Production-style scRNA-seq analysis pipeline built with **Snakemake and Docker**, with explicit execution control via a **Python CLI wrapper**.
