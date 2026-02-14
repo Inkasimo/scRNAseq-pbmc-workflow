@@ -187,7 +187,7 @@ This workflow can be executed using a versioned release, a digest-pinned archiva
 #### Versioned Release (recommended)
 
 ```bash
-docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.1
+docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.2
 ```
 
 #### Exact Archival Image (Digest-Pinned)
