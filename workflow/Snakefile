@@ -7,7 +7,7 @@ from snakemake.shell import shell
 
 # CONFIG / GLOBAL CONSTANTS
 
-configfile: "config/config.yaml"
+#configfile: "config/config.yaml"
 
 
 
@@ -120,6 +120,8 @@ def resolve_fastq_dir(donor):
 
 
 # ALL RULE
+DEG_ENABLED = as_bool(config.get("deg_and_tost", {}).get("enabled", True))
+NET_ENABLED = as_bool(config.get("network", {}).get("enabled", True))
 
 rule all:
     input:
@@ -171,16 +173,14 @@ rule all:
         ),
 
         # Deg and TOST
-        expand(
-            "results/downstream/deg_and_tost/{trim_state}/deg_and_tost/deg_and_tost.done",
-            trim_state=["trimmed"] if is_trimmed() else ["untrimmed"],
-        ),
+        expand("results/downstream/deg_and_tost/{trim_state}/deg_and_tost/deg_and_tost.done",
+               trim_state=["trimmed"] if is_trimmed() else ["untrimmed"]) if DEG_ENABLED else [],
 
         # Networks
-        expand(
-            "results/downstream/networks/{trim_state}/networks.done",
-            trim_state=["trimmed"] if is_trimmed() else ["untrimmed"],
-        ),
+        expand("results/downstream/networks/{trim_state}/networks.done",
+               trim_state=["trimmed"] if is_trimmed() else ["untrimmed"]) if NET_ENABLED else [],
+        
+       
 
 
 

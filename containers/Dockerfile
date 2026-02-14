@@ -25,6 +25,10 @@ RUN apt-get update && apt-get install -y \
 	pkg-config libfontconfig1-dev libcairo2-dev libglib2.0-dev \
     && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    default-jre \
+    && rm -rf /var/lib/apt/lists/*    
+
 ARG FASTQC_VERSION=0.11.9
 RUN curl -L -o /tmp/fastqc.zip \
     https://www.bioinformatics.babraham.ac.uk/projects/fastqc/fastqc_v${FASTQC_VERSION}.zip && \

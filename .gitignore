@@ -22,3 +22,4 @@ renv/staging/
 renv/local/
 withCallingHandlers
 library
+toy_data_bundle.tar.gz

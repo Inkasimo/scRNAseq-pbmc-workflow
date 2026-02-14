@@ -1,29 +1,77 @@
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18640320.svg)](https://doi.org/10.5281/zenodo.18640320)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18642101.svg)](https://doi.org/10.5281/zenodo.18642101)
 
 
 # scRNA-seq PBMC Workflow
 
-Production-style scRNA-seq analysis pipeline built with **Snakemake and Docker**, with explicit execution control via a **Python CLI wrapper**.
+Reproducible, containerized single-cell RNA-seq workflow built with Snakemake + Docker, controlled via a Python CLI wrapper.
 
-Demonstrates reproducible, modular, and fully containerized end-to-end analysis from FASTQ to downstream statistical modeling.
+End-to-end execution:
 
-## Status:
-- Draft — core pipeline implemented; downstream analyses in progress.
-- A small set of representative execution artifacts 
- (MultiQC report and selected downstream plots) is included under `docs/example_outputs/`
- as lightweight proof of successful execution. Full outputs are written to `results/`
- and are intentionally not version-controlled.
+FASTQ → QC → STARsolo → Seurat → DESeq2/TOST → enrichment → network analysis
 
-## Focus
-- Reproducible execution
-- Explicit workflow structure
-- Containerized dependencies
-- Clear separation between engineering (upstream) and analysis (downstream)
 
-## Dataset
-- 10x Genomics PBMC 5k
-- Donors 1–4
-- 3′ Gene Expression
+## Quick Start (Toy Demonstration)
+
+Runs a chromosome 1 mini-reference with downsampled FASTQs.
+Execution time: ~5–10 minutes after image pull and toy data download.
+Download size: ~2.1 GB (toy bundle) (may take a few minutes)
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/inkasimo/scRNAseq-pbmc-workflow.git
+```
+
+### 2. Pull the versioned Docker image (in repository)
+
+```bash
+docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.3
+```
+
+First pull may take several minutes (image ~1 GB).
+
+### 3. Install wrapper dependency (host only)
+
+```bash
+pip install -r wrapper-requirements.txt
+```
+
+Only installs pyyaml.
+Not required if running Snakemake manually.
+
+### 4. Download toy bundle (81.3 MB)
+
+```bash
+python3 run_analysis.py download_toy
+```
+This downloads and extracts:
+
+- `data/ref/toy/` (chr1 reference files)
+- `data/toy/donor1/` (toy FASTQs))
+
+
+### 5. Run toy workflow
+
+**Raw mode:**
+```bash
+python3 run_analysis.py toy
+```
+
+**Trimmed mode:**
+
+```bash
+python3 run_analysis.py toy --trimmed
+```
+
+Outputs written to:
+
+`results/`
+
+
+Representative example outputs from real run are available under:
+
+`docs/example_outputs/`
+
 
 ## What this pipeline does
 
@@ -43,6 +91,21 @@ Demonstrates reproducible, modular, and fully containerized end-to-end analysis 
 - Enrichment analysis
 - Co-expression network analysis and network modules
 - Module enrichment analysis
+
+## Focus
+
+- Reproducible execution
+- Explicit workflow structure
+- Containerized dependencies
+- Clear separation between engineering (upstream) and analysis (downstream)
+
+
+## Full Dataset Execution
+
+### Dataset
+- 10x Genomics PBMC 5k
+- Donors 1–4
+- 3′ Gene Expression
 
 ## Requirements
 
@@ -68,32 +131,16 @@ All core tools are provided inside the Docker image, including:
 
 - Python ≥3.9 (used only for the execution wrapper)
 
-## How to run
 
-### 1. Pull docker image (versioned release)
+### 1. Pull docker image 
 
-```bash
-docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.2
-```
-
-Detailed execution instructions, archival image digests, and local development builds are described in the User Manual:
-`docs/user_manual.md`
-
-
-### Workflow execution
+Use the same Docker image as shown in Quick Start.
 
 ### Execution with python wrapper (recommended)
 
 #### Wrapper requirements (host-side only)
 
-```bash
-pip install -r wrapper-requirements.txt
-```
-This installs:
-- pyyaml (used only by the wrapper)
-
-If you do not use the wrapper, you can ignore this step entirely.
-
+See Quick Start
 
 #### Example runs:
 
@@ -172,52 +219,36 @@ docker run --rm -it \
   snakemake results/alignment/starsolo/donor1/starsolo.done
 
   ```
-  
-## Resources and reproducibility
 
-### Barcode whitelist
-
-The 10x Genomics barcode whitelist is bundled directly in the repository:
-
-`resources/barcodes/3M-3pgex-may-2023_TRU.txt`
-
-
-This avoids reliance on unstable upstream URLs and ensures reproducible execution.
-
-### Gene sets (MSigDB)
-
-Gene sets used for enrichment analyses are stored locally under:
-
-`resources/genesets/`
-
-
-This includes:
-
-MSigDB Hallmark gene sets:
-
-`h.all.v2026.1.Hs.symbols.gmt`
-
-
-MSigDB C7 (immunologic signatures):
-
-`c7.all.v2026.1.Hs.symbols.gmt`
-
-
-Hallmark (H) and Immunologic Signature (C7) gene sets were obtained from the Molecular Signatures Database 
-(MSigDB, Broad Institute) and are included locally to ensure reproducible execution of the workflow. 
-All enrichment steps (GSEA and ORA) explicitly reference these local files
-
-Users should ensure compliance with MSigDB licensing terms when reusing these resources.
+## Repository structure
 
 ```text
-Liberzon A et al. The Molecular Signatures Database (MSigDB) hallmark gene set collection.
-Cell Systems (2015).
-
-Godec J et al. Compendium of Immune Signatures Identifies Conserved and Species-Specific
-Biology in Response to Inflammation. Immunity (2016).
+containers/           # Dockerfile(s) for reproducible execution
+workflow/             # Snakemake workflow (rules, DAG)
+config/               # User-editable configuration (config.yaml)
+resources/            # Static resources bundled with the workflow
+  barcodes/           # 10x barcode whitelist(s)
+  genesets/           # Hallmark and C7 .gmt files
+data/                 # Input data and references (not versioned)
+  raw/                # FASTQ files (downloaded or user-provided)
+  ref/                # Reference genome, GTF, STAR index
+  trimmed/            # Trimmed FASTQ files (generated only if read trimming is enabled)
+results/              # Outputs and logs (not versioned)
+  qc/                 # FastQC / MultiQC reports
+  alignment/          # STARsolo outputs
+  logs/               # Execution logs
+  downstream/         # Downstream analysis results
+	deg_and_tost/     # DEG and TOST analysis results
+	seurat/           # Seurat objects and related plots and tables
+	networks/         # Network analysis results (Work in progress)
+docs/                 # Documentation (user manual, report, notes, results layout)
+  example_outputs/    # A small set of representative execution artifacts
+scripts/              # R-scripts and helpers
+run_analysis.py       # Optional Python wrapper for section-based execution
 ```
 
 
+ 
 ## Workflow
 
 ### Execution flow
@@ -298,38 +329,52 @@ Cross-donor
   +-- DESeq2 (DE)
   +-- TOST (equivalence test)
   +-- enrichment (GSEA / ORA)
-  |
-  v
-(Work in progress)
-  - co-expression network analysis
+  +-- co-expression network analysis
 
 ```
 
-## Repository structure
+## Resources and reproducibility
+
+### Barcode whitelist
+
+The 10x Genomics barcode whitelist is bundled directly in the repository:
+
+`resources/barcodes/3M-3pgex-may-2023_TRU.txt`
+
+
+This avoids reliance on unstable upstream URLs and ensures reproducible execution.
+
+### Gene sets (MSigDB)
+
+Gene sets used for enrichment analyses are stored locally under:
+
+`resources/genesets/`
+
+
+This includes:
+
+MSigDB Hallmark gene sets:
+
+`h.all.v2026.1.Hs.symbols.gmt`
+
+
+MSigDB C7 (immunologic signatures):
+
+`c7.all.v2026.1.Hs.symbols.gmt`
+
+
+Hallmark (H) and Immunologic Signature (C7) gene sets were obtained from the Molecular Signatures Database 
+(MSigDB, Broad Institute) and are included locally to ensure reproducible execution of the workflow. 
+All enrichment steps (GSEA and ORA) explicitly reference these local files
+
+Users should ensure compliance with MSigDB licensing terms when reusing these resources.
 
 ```text
-containers/           # Dockerfile(s) for reproducible execution
-workflow/             # Snakemake workflow (rules, DAG)
-config/               # User-editable configuration (config.yaml)
-resources/            # Static resources bundled with the workflow
-  barcodes/           # 10x barcode whitelist(s)
-  genesets/           # Hallmark and C7 .gmt files
-data/                 # Input data and references (not versioned)
-  raw/                # FASTQ files (downloaded or user-provided)
-  ref/                # Reference genome, GTF, STAR index
-  trimmed/            # Trimmed FASTQ files (generated only if read trimming is enabled)
-results/              # Outputs and logs (not versioned)
-  qc/                 # FastQC / MultiQC reports
-  alignment/          # STARsolo outputs
-  logs/               # Execution logs
-  downstream/         # Downstream analysis results
-	deg_and_tost/     # DEG and TOST analysis results
-	seurat/           # Seurat objects and related plots and tables
-	networks/         # Network analysis results (Work in progress)
-docs/                 # Documentation (user manual, report, notes, results layout)
-  example_outputs/    # A small set of representative execution artifacts
-scripts/              # R-scripts and helpers
-run_analysis.py       # Optional Python wrapper for section-based execution
+Liberzon A et al. The Molecular Signatures Database (MSigDB) hallmark gene set collection.
+Cell Systems (2015).
+
+Godec J et al. Compendium of Immune Signatures Identifies Conserved and Species-Specific
+Biology in Response to Inflammation. Immunity (2016).
 ```
 
 ## Documentation
@@ -361,14 +406,13 @@ Project documentation is organized under the `docs/` directory:
 
 ## Data availability (planned)
 
-Once the workflow is finalized, a stable snapshot of representative results will be archived on Zenodo with a DOI.
+A stable snapshot of representative results are archived on Zenodo with DOI. 
 
-This archive will include:
-- Representative output data produced by the full pipeline (alignment and downstream analysis).
+This archive includes:
+- Representative output data produced by the full pipeline (alignment and downstream analysis) (Work in progress).
 - A small toy dataset (downsampled FASTQs) intended for demonstration and pipeline sanity-check runs only.
 
 
 ## Citation
 
 If you use this workflow in a publication, please cite the repository.
-A Zenodo DOI for a stable release will be provided upon publication.

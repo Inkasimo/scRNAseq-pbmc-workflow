@@ -20,6 +20,8 @@ io:
 
 ref:
   genome_fasta: "data/ref/toy/GRCh38.chr1.fa"
+  genome_fasta_url: ""
+  gtf_url: "" 
   gtf: "data/ref/toy/gencode.v45.chr1.gtf"
   star_index: "data/ref/toy/star_index_chr1"
   star_index_done: "data/ref/toy/star_index_chr1/index.done"
@@ -27,7 +29,7 @@ ref:
   whitelist: "resources/barcodes/3M-3pgex-may-2023_TRU.txt"
   whitelist_done: "data/ref/toy/whitelist.done"
 
-  build_star_index: false
+  build_star_index: true
 
 seurat_normalization:
   method: "LogNormalize"
@@ -56,5 +58,8 @@ deg_and_tost:
   equiv_alpha: 0.01
   equiv_delta: 0.75
 
+deg_and_tost:
+  enabled: false
+  
 network:
   enabled: false

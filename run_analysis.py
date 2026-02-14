@@ -135,8 +135,7 @@ SECTION_TARGETS = {
 #HELPERS
 
 DEFAULT_TOY_ZENODO_URL = (
-    "https://zenodo.org/records/18640321/files/"
-    "toy_data_bundle.tar.gz?download=1"
+    "https://zenodo.org/records/18642101/files/toy_data_bundle.tar.gz?download=1"
 )
 
 
@@ -191,7 +190,7 @@ def main() -> int:
         #sp.add_argument("--image",
             #default="ghcr.io/inkasimo/scrnaseq-pbmc-workflow@sha256:80354b76e76405636c43e73902236e0399d26978a214227afbafa46fc0555bb8")
         sp.add_argument("--image",
-            default="ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.1")
+            default="ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.3-rc1")
         #sp.add_argument("--image", default="scrnaseq-workflow")
         sp.add_argument("--snakefile", default="workflow/Snakefile")
         sp.add_argument("--configfile", default="config/config.yaml")
@@ -329,22 +328,25 @@ def main() -> int:
     if args.section == "download_toy":
         import urllib.request
         import tarfile
+        import tempfile
+        import shutil
 
         url = args.zenodo_url or DEFAULT_TOY_ZENODO_URL
-        if not url or "18640321" in url:
-            print("ERROR: Provide --zenodo-url or set DEFAULT_TOY_ZENODO_URL to a real Zenodo file URL.")
+        if not url:
+            print("ERROR: No toy bundle URL configured.")
             return 2
 
+        # If already in the expected place, skip
         if Path("data/ref/toy").exists() and Path("data/toy").exists():
             print("Toy bundle already extracted (data/ref/toy and data/toy exist). Skipping download.")
             return 0
 
-        tar_path = "toy_data_bundle.tar.gz"
+        tar_path = Path("toy_data_bundle.tar.gz")
 
         print(f"Downloading toy bundle from {url}")
         urllib.request.urlretrieve(url, tar_path)
 
-        def safe_extract(tar: tarfile.TarFile, path: str = ".") -> None:
+        def safe_extract(tar: tarfile.TarFile, path: str) -> None:
             base = Path(path).resolve()
             for m in tar.getmembers():
                 dest = (base / m.name).resolve()
@@ -353,11 +355,37 @@ def main() -> int:
             tar.extractall(path)
 
         print("Extracting toy bundle...")
-        with tarfile.open(tar_path, "r:gz") as tar:
-            safe_extract(tar, ".")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
 
-        print("Toy bundle ready.")
+            with tarfile.open(tar_path, "r:gz") as tar:
+                safe_extract(tar, str(tmp))
+
+            # Normalize: find the extracted "data" directory
+            candidates = [
+                tmp / "data",
+                tmp / "toy_bundle" / "data",
+            ]
+            src_data = next((c for c in candidates if c.exists()), None)
+
+            if src_data is None:
+                # helpful debug
+                top = sorted([p.name for p in tmp.iterdir()])
+                print("ERROR: Could not find extracted data/ directory.")
+                print(f"Top-level extracted entries: {top}")
+                return 2
+
+            # Move into repo root as ./data
+            dest_data = Path("data")
+            if dest_data.exists():
+                print("ERROR: ./data already exists but toy paths are missing. Remove/rename ./data and retry.")
+                return 2
+
+            shutil.move(str(src_data), str(dest_data))
+
+        print("Toy bundle ready (extracted to ./data).")
         return 0
+
 
 
 
