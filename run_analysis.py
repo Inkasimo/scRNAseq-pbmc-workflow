@@ -548,10 +548,6 @@ def main() -> int:
         smk.append("--config")
         smk.extend(config_overrides)
     
-    if args.section == "toy":
-        smk.append("all")
-
-
     if args.dry_run:
         smk.append("-n")
 
@@ -572,6 +568,12 @@ def main() -> int:
     if targets:
         smk.append("--")
         smk.extend(targets)
+
+    # Default target for all/toy
+    if args.section in ("all", "all_no_download", "toy"):
+        if not targets:
+            targets = ["all"]
+
 
     # Fail fast if Docker bind mount is empty/unavailable (prevents misleading Snakefile errors)
     if not _docker_bind_mount_works(repo_root, args.image):

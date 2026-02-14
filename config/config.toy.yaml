@@ -31,14 +31,6 @@ ref:
 
   build_star_index: true
 
-seurat_normalization:
-  method: "LogNormalize"
-  scale_factor: 10000
-  hvg_method: "vst"
-  hvg_nfeatures: 1000
-  vars_to_regress: []
-  scale_features: "hvg"
-
 seurat_annotation:
   dims: 20
   resolution: 0.2
@@ -48,18 +40,15 @@ genesets:
   hallmark_gmt: "resources/genesets/h.all.v2026.1.Hs.symbols.gmt"
   c7_gmt: "resources/genesets/c7.all.v2026.1.Hs.symbols.gmt"
 
-deg_and_tost:
-  assay: "RNA"
-  min_baseMean: 10
-  min_cells_per_group: 50
-  seed: 42
-  marker_padj: 1e-10
-  marker_lfc: 3
-  equiv_alpha: 0.01
-  equiv_delta: 0.75
 
 deg_and_tost:
   enabled: false
   
 network:
+  enabled: false
+
+seurat_cluster_annot:
+  enabled: false
+
+seurat_filt_normalize:
   enabled: false

@@ -122,6 +122,8 @@ def resolve_fastq_dir(donor):
 # ALL RULE
 DEG_ENABLED = as_bool(config.get("deg_and_tost", {}).get("enabled", True))
 NET_ENABLED = as_bool(config.get("network", {}).get("enabled", True))
+CLUST_ENABLED=as_bool(config.get("seurat_cluster_annot", {}).get("enabled", True))
+FILT_NORM_ENABLED=as_bool(config.get("seurat_filt_normalize", {}).get("enabled", True))
 
 rule all:
     input:
@@ -162,15 +164,13 @@ rule all:
         expand(
             "results/downstream/seurat/{trim_state}/{donor}/seurat_filt_normalized/seurat_filt_normalize.done",
             donor=DONORS,
-            trim_state=["trimmed"] if is_trimmed() else ["untrimmed"],
-        ),
+            trim_state=["trimmed"] if is_trimmed() else ["untrimmed"]) if FILT_NORM_ENABLED else [],
 
                 # Seurat clustering + annotation
         expand(
             "results/downstream/seurat/{trim_state}/{donor}/seurat_cluster_annot/seurat_cluster_annot.done",
             donor=DONORS,
-            trim_state=["trimmed"] if is_trimmed() else ["untrimmed"],
-        ),
+            trim_state=["trimmed"] if is_trimmed() else ["untrimmed"]) if CLUST_ENABLED else [],
 
         # Deg and TOST
         expand("results/downstream/deg_and_tost/{trim_state}/deg_and_tost/deg_and_tost.done",
