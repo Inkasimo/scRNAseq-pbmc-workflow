@@ -10,7 +10,7 @@ End-to-end execution:
 FASTQ → QC → STARsolo → Seurat → DESeq2/TOST → enrichment → network analysis
 
 
-## Quick Start (Toy Demonstration)
+## Quick Start (Toy Demo)
 
 - Runs a chromosome 1 mini-reference with downsampled FASTQs.
 - Execution time: ~5–10 minutes after image pull and toy data download.
