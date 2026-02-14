@@ -565,14 +565,14 @@ def main() -> int:
         smk.extend(extra)
 
     # Targets MUST be separated by '--' (prevents --rerun-triggers from eating them)
+    # Default target for all/toy
+    if args.section in ("all", "all_no_download", "toy") and not targets:
+        targets = ["all"]
+
+    # Targets MUST be separated by '--'
     if targets:
         smk.append("--")
         smk.extend(targets)
-
-    # Default target for all/toy
-    if args.section in ("all", "all_no_download", "toy"):
-        if not targets:
-            targets = ["all"]
 
 
     # Fail fast if Docker bind mount is empty/unavailable (prevents misleading Snakefile errors)

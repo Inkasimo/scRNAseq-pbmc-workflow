@@ -97,8 +97,10 @@ def resolve_fastq_dir(donor):
     r1 = sorted(glob.glob(os.path.join(base, "**", "*_R1_*.fastq.gz"), recursive=True))
     r2 = sorted(glob.glob(os.path.join(base, "**", "*_R2_*.fastq.gz"), recursive=True))
 
+    # IMPORTANT: during DAG build, FASTQs may not exist yet (will be downloaded by ensure_fastqs)
+    # Return the base dir instead of raising; downstream rules already hard-fail if files are missing at runtime.
     if not r1 or not r2:
-        raise ValueError(f"{donor}: no R1/R2 fastqs found under {base}")
+        return base
 
     from collections import Counter
     r1_dirs = Counter(os.path.dirname(x) for x in r1)
@@ -112,6 +114,9 @@ NET_ENABLED = as_bool(config.get("network", {}).get("enabled", True))
 CLUST_ENABLED=as_bool(config.get("seurat_cluster_annot", {}).get("enabled", True))
 FILT_NORM_ENABLED=as_bool(config.get("seurat_filt_normalize", {}).get("enabled", True))
 
+
+
+ruleorder: ensure_fastqs > fastqc_raw
 rule all:
     input:
         # Always ensure reference is present
@@ -196,8 +201,8 @@ rule ensure_fastqs:
         mkdir -p {params.fqdir}
         mkdir -p results/logs/download
 
-        if ls {params.fqdir}/*_R1_*.fastq.gz >/dev/null 2>&1 && \
-           ls {params.fqdir}/*_R2_*.fastq.gz >/dev/null 2>&1; then
+        if find "{params.fqdir}" -type f -name "*_R1_*.fastq.gz" -print -quit | grep -q . && \
+           find "{params.fqdir}" -type f -name "*_R2_*.fastq.gz" -print -quit | grep -q .; then
             echo "FASTQs already present." > {log}
             tmp="{output.done}.tmp"
             echo ok > "$tmp"
@@ -346,9 +351,8 @@ rule trim_fastqs:
 
         log_path = str(log[0]) if isinstance(log, (list, tuple)) else str(log)
 
-        r1_files = sorted(glob.glob(f"{params.fqdir}/*_R1_*.fastq.gz"))
-        r2_files = sorted(glob.glob(f"{params.fqdir}/*_R2_*.fastq.gz"))
-
+        r1_files = sorted(glob.glob(f"{params.fqdir}/**/*_R1_*.fastq.gz", recursive=True))
+        r2_files = sorted(glob.glob(f"{params.fqdir}/**/*_R2_*.fastq.gz", recursive=True))
         if not r1_files:
             raise ValueError(f"{wildcards.donor}: no R1 files found in {params.fqdir}")
         if not r2_files:
@@ -567,8 +571,8 @@ rule starsolo_raw:
         mkdir -p {params.outdir}
         mkdir -p results/logs/alignment
 
-        R1="$(ls {params.fqdir}/*_R1_*.fastq.gz | paste -sd, -)"
-        R2="$(ls {params.fqdir}/*_R2_*.fastq.gz | paste -sd, -)"
+        R1="$(find "{params.fqdir}" -type f -name "*_R1_*.fastq.gz" | sort | paste -sd, -)"
+        R2="$(find "{params.fqdir}" -type f -name "*_R2_*.fastq.gz" | sort | paste -sd, -)"
         test -n "$R1"
         test -n "$R2"
 
@@ -617,8 +621,9 @@ rule starsolo_trimmed:
         mkdir -p results/logs/alignment
 
         # Build comma-separated lane lists at runtime (AFTER trimming has run)
-        R1="$(ls {params.fqdir}/*_R1_*.fastq.gz | paste -sd, -)"
-        R2="$(ls {params.fqdir}/*_R2_*.fastq.gz | paste -sd, -)"
+        R1="$(find "{params.fqdir}" -type f -name "*_R1_*.fastq.gz" | sort | paste -sd, -)"
+        R2="$(find "{params.fqdir}" -type f -name "*_R2_*.fastq.gz" | sort | paste -sd, -)"
+
 
         # Hard fail with a clear message if still missing
         test -n "$R1"
