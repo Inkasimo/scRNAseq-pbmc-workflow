@@ -190,7 +190,7 @@ def main() -> int:
         #sp.add_argument("--image",
             #default="ghcr.io/inkasimo/scrnaseq-pbmc-workflow@sha256:80354b76e76405636c43e73902236e0399d26978a214227afbafa46fc0555bb8")
         sp.add_argument("--image",
-            default="ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.3-rc2")
+            default="ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.4")
         #sp.add_argument("--image", default="scrnaseq-workflow")
         sp.add_argument("--snakefile", default="workflow/Snakefile")
         sp.add_argument("--configfile", default="config/config.yaml")
