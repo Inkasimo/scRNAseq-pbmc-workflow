@@ -30,6 +30,25 @@ LEGACY_BRANCH = {
     "trimmed": "trimmed"
 }
 
+def as_bool(x, default=False):
+    if x is None:
+        return default
+    if isinstance(x, bool):
+        return x
+    if isinstance(x, (int, float)):
+        return bool(x)
+    if isinstance(x, str):
+        return x.strip().lower() in ("1", "true", "t", "yes", "y", "on")
+    return bool(x)
+
+# Download policy:
+# - For `all`: auto-download if missing (even if config says false)
+# - For other sections: obey config io.download_fastqs (default false)
+DOWNLOAD_FASTQS = as_bool(
+    config.get("download_fastqs", None),
+    default=as_bool(config.get("io", {}).get("download_fastqs", False))
+)
+
 
 # Helpers
 
@@ -49,17 +68,6 @@ def touch_done_atomic(done_path: str):
 
 
 # Config overrides (CLI > config.yaml)
-
-def as_bool(x, default=False):
-    if x is None:
-        return default
-    if isinstance(x, bool):
-        return x
-    if isinstance(x, (int, float)):
-        return bool(x)
-    if isinstance(x, str):
-        return x.strip().lower() in ("1", "true", "t", "yes", "y", "on")
-    return bool(x)
 
 BUILD_STAR_INDEX = as_bool(config.get("build_star_index", None),
                            default=as_bool(config.get("ref", {}).get("build_star_index", True)))
@@ -116,7 +124,6 @@ FILT_NORM_ENABLED=as_bool(config.get("seurat_filt_normalize", {}).get("enabled",
 
 
 
-ruleorder: ensure_fastqs > fastqc_raw
 rule all:
     input:
         # Always ensure reference is present
@@ -191,40 +198,51 @@ rule ensure_fastqs:
         done="data/raw/{donor}/fastqs.done"
     params:
         url=lambda wc: config["pbmc"][wc.donor]["url"],
-        fqdir=lambda wc: f"data/raw/{wc.donor}"
+        fqdir=lambda wc: f"data/raw/{wc.donor}",
+        allow_download=lambda wc: (
+            True if (config.get("workflow_target", "") == "all") else DOWNLOAD_FASTQS
+        ),
     log:
         "results/logs/download/{donor}.log"
     shell:
         r"""
         set -euo pipefail
 
-        mkdir -p {params.fqdir}
+        mkdir -p "{params.fqdir}"
         mkdir -p results/logs/download
 
+        # If FASTQs exist anywhere under fqdir, just mark done.
         if find "{params.fqdir}" -type f -name "*_R1_*.fastq.gz" -print -quit | grep -q . && \
            find "{params.fqdir}" -type f -name "*_R2_*.fastq.gz" -print -quit | grep -q .; then
-            echo "FASTQs already present." > {log}
+            echo "FASTQs already present." > "{log}"
             tmp="{output.done}.tmp"
             echo ok > "$tmp"
             mv -f "$tmp" "{output.done}"
             exit 0
         fi
 
-        echo "Downloading FASTQs..." > {log}
+        # Missing FASTQs: only download if allowed
+        if [ "{params.allow_download}" != "True" ] && [ "{params.allow_download}" != "true" ]; then
+            echo "ERROR: FASTQs missing under {params.fqdir} and downloading is disabled. Set io:download_fastqs: true or run 'all'." > "{log}"
+            exit 2
+        fi
+
+        echo "Downloading FASTQs..." > "{log}"
 
         wget --continue \
              --tries=50 \
              --waitretry=10 \
              --read-timeout=30 \
              --timeout=30 \
-             -O {params.fqdir}/fastqs.tar "{params.url}" >> {log} 2>&1
+             -O "{params.fqdir}/fastqs.tar" "{params.url}" >> "{log}" 2>&1
 
-        tar -xf {params.fqdir}/fastqs.tar -C {params.fqdir} >> {log} 2>&1
+        tar -xf "{params.fqdir}/fastqs.tar" -C "{params.fqdir}" >> "{log}" 2>&1
 
         tmp="{output.done}.tmp"
         echo ok > "$tmp"
         mv -f "$tmp" "{output.done}"
         """
+
 
 
 
