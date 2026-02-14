@@ -14,7 +14,7 @@ FASTQ → QC → STARsolo → Seurat → DESeq2/TOST → enrichment → network 
 
 - Runs a chromosome 1 mini-reference with downsampled FASTQs.
 - Execution time: ~5–10 minutes after image pull and toy data download.
-- Download size: ~ 81.3 MB (toy bundle) 
+- Toy data download size: ~ 81.3 MB (toy bundle) 
 - Toy runs upstream+Seurat object creation (No downstream from Seurat object creation)
 
 ### 1. Clone the repository
