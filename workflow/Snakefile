@@ -139,8 +139,7 @@ rule all:
         STAR_INDEX_DONE,
         WHITELIST_DONE,
 
-        [fastqs_done_path(d) for d in DONORS],
-
+        [fastqs_done_path(d) if WORKFLOW_TARGET == "toy" else fastqs_done(d) for d in DONORS],
 
         # Always run RAW QC
         expand("results/qc/fastqc/raw/{donor}/fastqc.done", donor=DONORS),
@@ -205,7 +204,7 @@ rule all:
 
 rule ensure_fastqs_raw:
     output:
-        done="data/raw/{donor}/fastqs.done"
+        done=lambda wc: f"{config['pbmc'][wc.donor].get('fastq_base', f'data/raw/{wc.donor}')}/fastqs.done"
     params:
         url=lambda wc: config["pbmc"][wc.donor].get("url", ""),
         fqdir=lambda wc: str(config["pbmc"][wc.donor].get("fastq_base", f"data/raw/{wc.donor}")),
@@ -278,7 +277,8 @@ ruleorder: ensure_fastqs_toy > ensure_fastqs_raw
 
 rule fastqc_raw:
     input:
-        done=lambda wc: fastqs_done_path(wc.donor)
+        done=lambda wc: fastqs_done(wc.donor),
+        
     output:
         done="results/qc/fastqc/raw/{donor}/fastqc.done"
     log:
@@ -382,7 +382,7 @@ rule multiqc_trimmed:
 
 rule trim_fastqs:
     input:
-        raw_done=lambda wc: fastqs_done_path(wc.donor),
+        raw_done=lambda wc: fastqs_done(wc.donor),
     output:
         done="data/trimmed/{donor}/trim.done"
     threads: CUTADAPT_THREADS
@@ -609,7 +609,7 @@ rule starsolo_raw:
         index_done=STAR_INDEX_DONE,
         wl=config["ref"]["whitelist"],
         wl_done=WHITELIST_DONE,
-        fastqs_done=lambda wc: fastqs_done_path(wc.donor),
+        fastqs_done=lambda wc: fastqs_done(wc.donor),
     output:
         done="results/alignment/starsolo/raw/{donor}/starsolo.done"
     params:
