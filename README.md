@@ -81,7 +81,7 @@ Outputs written to:
 
 ## Example outputs
 
-A small set of representative outputs from a full PBMC run is available under `docs/example_outputs/`, illustrating key QC, clustering, and differential expression results.
+A small set of outputs from a full PBMC run is available under `docs/example_outputs/`, illustrating key QC, clustering, and differential expression results.
 
 <p align="center">
   <img src="docs/example_outputs/umap_by_cell_type_pred.png" width="48%" />
