@@ -271,15 +271,15 @@ run_analysis.py       # Optional Python wrapper for section-based execution
 
 ```text
 
-config/config.yaml
-        |
-        v
-run_analysis.py  (host-side CLI wrapper)
-        |
-        v
+                config/config.yaml
+                        |
+                        v
+        run_analysis.py  (host-side CLI wrapper)
+                        |
+                        v
 docker run -v $PWD:/work -w /work ...  (bind-mount repo)
-        |
-        v
+                        |
+                        v
 +------------------------------------------------------+
 |                  Docker Container                    |
 |                                                      |
