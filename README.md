@@ -10,6 +10,7 @@ End-to-end execution:
 
 **FASTQ → QC → STARsolo → Seurat → DESeq2/TOST → enrichment → network analysis**
 
+CI runs the toy workflow (including STAR index build on chr1) to validate reproducibility.
 
 ## Quick Start (Toy Demo)
 
