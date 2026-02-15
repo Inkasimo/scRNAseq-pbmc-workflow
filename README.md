@@ -287,9 +287,14 @@ docker run -v $PWD:/work -w /work ...  (bind-mount repo)
 |               → rules → tools/scripts                |
 |                                                      |
 +------------------------------------------------------+
-
-
 ```
+
+### Rulegraph (untrimmed reads)
+
+<p align="center">
+  <img src="docs/rulegraph.png" width="48%" />
+</p>
+
 
 ### Upstream (engineering)
 
