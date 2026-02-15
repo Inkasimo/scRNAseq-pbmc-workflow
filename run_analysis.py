@@ -147,6 +147,10 @@ def _multiqc_path(is_toy: bool, trimmed: bool) -> str:
     branch = "trimmed" if trimmed else "raw"
     return f"results/qc/multiqc/{branch}{suffix}/multiqc_report.html"
 
+def _raw_fastqs_done_target(donor: str, cfg: dict) -> str:
+    # Mirror Snakefile: sentinel colocated with fastq_base
+    fastq_base = cfg["pbmc"][donor].get("fastq_base", f"data/raw/{donor}")
+    return f"{fastq_base}/fastqs.done"
 
 def _docker_bind_mount_works(repo_root: Path, image: str) -> bool:
     """
@@ -420,6 +424,10 @@ def main() -> int:
         args.configfile = "config/config.toy.yaml"
         donors = load_donors(args.configfile)
     
+    with open(args.configfile) as f:
+        cfg = yaml.safe_load(f)
+
+    
     is_toy = _is_toy_mode(args)
     mq_raw = _multiqc_path(is_toy=is_toy, trimmed=False)
     mq_trimmed = _multiqc_path(is_toy=is_toy, trimmed=True)
@@ -434,6 +442,18 @@ def main() -> int:
                 targets.extend(t.format(donor=d) for d in donors)
             else:
                 targets.append(t)
+
+        # Fix raw fastqs sentinel to follow fastq_base
+        fixed = []
+        for t in targets:
+            if t.startswith("data/raw/") and t.endswith("/fastqs.done"):
+                donor = Path(t).parts[2]
+                fixed.append(_raw_fastqs_done_target(donor, cfg))
+            else:
+                fixed.append(t)
+        targets = fixed
+
+
 
     elif args.section == "ref":
         targets = SECTION_TARGETS["ref"]
