@@ -6,7 +6,7 @@ Reproducible, containerized single-cell RNA-seq workflow built with Snakemake + 
 
 End-to-end execution:
 
-FASTQ → QC → STARsolo → Seurat → DESeq2/TOST → enrichment → network analysis
+**FASTQ → QC → STARsolo → Seurat → DESeq2/TOST → enrichment → network analysis**
 
 
 ## Quick Start (Toy Demo)
