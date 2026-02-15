@@ -14,7 +14,7 @@ End-to-end execution:
 - Runs a chromosome 1 mini-reference with downsampled FASTQs.
 - Execution time: ~5–10 minutes after image pull and toy data download.
 - Toy data download size: ~ 81.3 MB (toy bundle) 
-- Toy runs upstream+Seurat object creation (No downstream from Seurat object creation)
+- Toy runs upstream+Seurat object creation (no downstream from Seurat object creation)
 
 ### 1. Clone the repository
 
