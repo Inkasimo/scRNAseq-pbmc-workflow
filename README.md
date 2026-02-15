@@ -417,7 +417,7 @@ Project documentation is organized under the `docs/` directory:
   
 ## Non-goals
 
-- This pipeline is not intended to benchmark methods or claim novel biological findings.
+This pipeline is not intended to benchmark methods or claim novel biological findings.
 
 ## Data availability
 
