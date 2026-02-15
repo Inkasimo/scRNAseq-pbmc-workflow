@@ -257,7 +257,7 @@ results/              # Outputs and logs (not versioned)
 	deg_and_tost/     # DEG and TOST analysis results
 	seurat/           # Seurat objects and related plots and tables
 	networks/         # Network analysis results 
-docs/                 # Documentation (user manual, report, notes, results layout)
+docs/                 # Documentation (technical summary, user manual, report, results layout, rulegraph)
   example_outputs/    # A small set of representative execution artifacts
 scripts/              # R-scripts and helpers
 run_analysis.py       # Optional Python wrapper for section-based execution
