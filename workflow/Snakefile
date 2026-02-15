@@ -100,16 +100,11 @@ def starsolo_done(donor, mode):
 
 
 def resolve_fastq_dir(donor):
-    base = f"data/raw/{donor}"
-
+    base = fastq_base(donor)
     r1 = sorted(glob.glob(os.path.join(base, "**", "*_R1_*.fastq.gz"), recursive=True))
     r2 = sorted(glob.glob(os.path.join(base, "**", "*_R2_*.fastq.gz"), recursive=True))
-
-    # IMPORTANT: during DAG build, FASTQs may not exist yet (will be downloaded by ensure_fastqs)
-    # Return the base dir instead of raising; downstream rules already hard-fail if files are missing at runtime.
     if not r1 or not r2:
         return base
-
     from collections import Counter
     r1_dirs = Counter(os.path.dirname(x) for x in r1)
     return r1_dirs.most_common(1)[0][0]
@@ -121,7 +116,19 @@ DEG_ENABLED = as_bool(config.get("deg_and_tost", {}).get("enabled", True))
 NET_ENABLED = as_bool(config.get("network", {}).get("enabled", True))
 CLUST_ENABLED=as_bool(config.get("seurat_cluster_annot", {}).get("enabled", True))
 FILT_NORM_ENABLED=as_bool(config.get("seurat_filt_normalize", {}).get("enabled", True))
+
 WORKFLOW_TARGET = str(config.get("workflow_target", "all"))
+
+def fastqs_done_path(donor):
+    return f"data/toy/{donor}/fastqs.done" if WORKFLOW_TARGET == "toy" else f"data/raw/{donor}/fastqs.done"
+
+
+def fastq_base(donor):
+    return str(config["pbmc"][donor].get("fastq_base", f"data/raw/{donor}"))
+
+def fastqs_done(donor):
+    # sentinel colocated with the FASTQs base directory
+    return f"{fastq_base(donor)}/fastqs.done"
 
 
 rule all:
@@ -130,14 +137,8 @@ rule all:
         STAR_INDEX_DONE,
         WHITELIST_DONE,
 
-        (
-            expand("data/raw/{donor}/fastqs.done", donor=DONORS)
-            if WORKFLOW_TARGET != "toy"
-            else expand("data/toy/{donor}/fastqs.done", donor=DONORS)
-        ),
+        [fastqs_done_path(d) for d in DONORS],
 
-        # Always ensure raw FASTQs are present (source for everything)
-        expand("data/raw/{donor}/fastqs.done", donor=DONORS),
 
         # Always run RAW QC
         expand("results/qc/fastqc/raw/{donor}/fastqc.done", donor=DONORS),
@@ -197,27 +198,21 @@ rule all:
 
 # ---- FASTQ acquisition: optional download vs presence check ----
 
-# TODO: Deal with the output folder ambiguity
 
-rule ensure_fastqs:
+rule ensure_fastqs_raw:
     output:
         done="data/raw/{donor}/fastqs.done"
     params:
-        url=lambda wc: config["pbmc"][wc.donor]["url"],
-        fqdir=lambda wc: f"data/raw/{wc.donor}",
-        allow_download=lambda wc: (
-            True if (config.get("workflow_target", "") == "all") else DOWNLOAD_FASTQS
-        ),
+        url=lambda wc: config["pbmc"][wc.donor].get("url", ""),
+        fqdir=lambda wc: str(config["pbmc"][wc.donor].get("fastq_base", f"data/raw/{wc.donor}")),
+        allow_download=lambda wc: (True if WORKFLOW_TARGET == "all" else DOWNLOAD_FASTQS),
     log:
-        "results/logs/download/{donor}.log"
+        "results/logs/download/raw_{donor}.log"
     shell:
         r"""
         set -euo pipefail
+        mkdir -p "{params.fqdir}" results/logs/download
 
-        mkdir -p "{params.fqdir}"
-        mkdir -p results/logs/download
-
-        # If FASTQs exist anywhere under fqdir, just mark done.
         if find "{params.fqdir}" -type f -name "*_R1_*.fastq.gz" -print -quit | grep -q . && \
            find "{params.fqdir}" -type f -name "*_R2_*.fastq.gz" -print -quit | grep -q .; then
             echo "FASTQs already present." > "{log}"
@@ -227,27 +222,50 @@ rule ensure_fastqs:
             exit 0
         fi
 
-        # Missing FASTQs: only download if allowed
         if [ "{params.allow_download}" != "True" ] && [ "{params.allow_download}" != "true" ]; then
-            echo "ERROR: FASTQs missing under {params.fqdir} and downloading is disabled. Set io:download_fastqs: true or run 'all'." > "{log}"
+            echo "ERROR: FASTQs missing under {params.fqdir} and downloading is disabled." > "{log}"
             exit 2
         fi
 
         echo "Downloading FASTQs..." > "{log}"
-
-        wget --continue \
-             --tries=50 \
-             --waitretry=10 \
-             --read-timeout=30 \
-             --timeout=30 \
+        wget --continue --tries=50 --waitretry=10 --read-timeout=30 --timeout=30 \
              -O "{params.fqdir}/fastqs.tar" "{params.url}" >> "{log}" 2>&1
-
         tar -xf "{params.fqdir}/fastqs.tar" -C "{params.fqdir}" >> "{log}" 2>&1
 
         tmp="{output.done}.tmp"
         echo ok > "$tmp"
         mv -f "$tmp" "{output.done}"
         """
+
+rule ensure_fastqs_toy:
+    output:
+        done="data/toy/{donor}/fastqs.done"
+    params:
+        # toy fastqs are expected to already exist under data/toy/{donor}
+        fqdir=lambda wc: f"data/toy/{wc.donor}"
+    log:
+        "results/logs/download/toy_{donor}.log"
+    shell:
+        r"""
+        set -euo pipefail
+        mkdir -p "{params.fqdir}" results/logs/download
+
+        if find "{params.fqdir}" -type f -name "*_R1_*.fastq.gz" -print -quit | grep -q . && \
+           find "{params.fqdir}" -type f -name "*_R2_*.fastq.gz" -print -quit | grep -q .; then
+            tmp="{output.done}.tmp"
+            echo ok > "$tmp"
+            mv -f "$tmp" "{output.done}"
+            exit 0
+        fi
+
+        echo "ERROR: Toy FASTQs missing under {params.fqdir}" > "{log}"
+        exit 2
+        """
+
+# Prefer toy producer when both could match
+ruleorder: ensure_fastqs_toy > ensure_fastqs_raw
+
+
 
 
 
@@ -256,14 +274,14 @@ rule ensure_fastqs:
 
 rule fastqc_raw:
     input:
-        "data/raw/{donor}/fastqs.done"
+        done=lambda wc: fastqs_done_path(wc.donor)
     output:
         done="results/qc/fastqc/raw/{donor}/fastqc.done"
     log:
         "results/logs/qc/fastqc_raw_{donor}.log"
     threads: FASTQC_THREADS
     params:
-        fqdir=lambda wc: resolve_fastq_dir(wc.donor)
+        fqdir=lambda wc: resolve_fastq_dir(wc.donor)   # keep as-is for now
     shell:
         r"""
         set -euo pipefail
@@ -356,7 +374,7 @@ rule multiqc_trimmed:
 
 rule trim_fastqs:
     input:
-        raw_done="data/raw/{donor}/fastqs.done",
+        raw_done=lambda wc: fastqs_done_path(wc.donor),
     output:
         done="data/trimmed/{donor}/trim.done"
     threads: CUTADAPT_THREADS
@@ -583,7 +601,7 @@ rule starsolo_raw:
         index_done=STAR_INDEX_DONE,
         wl=config["ref"]["whitelist"],
         wl_done=WHITELIST_DONE,
-        fastqs_done="data/raw/{donor}/fastqs.done",
+        fastqs_done=lambda wc: fastqs_done_path(wc.donor),
     output:
         done="results/alignment/starsolo/raw/{donor}/starsolo.done"
     params:

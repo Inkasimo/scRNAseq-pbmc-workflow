@@ -1,4 +1,5 @@
 # config/config.toy.yaml
+workflow_target: toy
 pbmc:
   donor1:
     url: ""
