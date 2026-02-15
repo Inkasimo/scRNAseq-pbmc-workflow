@@ -385,8 +385,6 @@ def main() -> int:
         return 0
 
 
-
-
     try:
         repo_root = Path.cwd()
     except FileNotFoundError:
