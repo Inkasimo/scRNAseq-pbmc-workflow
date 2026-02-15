@@ -145,7 +145,7 @@ All core tools are provided inside the Docker image, including:
 
 ### Optional (wrapper only)
 
-- Python ≥3.9 with venv support (used only for the execution wrapper)
+Python ≥3.9 with venv support (used only for the execution wrapper)
 
 
 ### 1. Pull docker image 
