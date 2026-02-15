@@ -32,7 +32,7 @@ First pull may take several minutes (image ~1.5 GB).
 
 ### 3. Install wrapper dependency (host only)
 
-- Ensure venv support is available (Linux users may need python3-venv installed)
+Ensure venv support is available (Linux users may need python3-venv installed)
 
 ```bash
 python3 -m venv .venv
@@ -125,8 +125,7 @@ A small set of outputs from a full PBMC run is available under `docs/example_out
 
 ## Requirements
 
-- Full run requires ~25–30 GB RAM for STAR index and alignment
-  and several hours depending on cores.
+Full run requires ~25–30 GB RAM for STAR index and alignment and several hours depending on cores.
 
 ### Required
 
