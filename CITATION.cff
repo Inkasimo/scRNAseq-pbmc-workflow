@@ -11,5 +11,5 @@ repository-code: https://github.com/Inkasimo/scRNAseq-pbmc-workflow
 license: MIT
 
 doi: 10.5281/zenodo.18640320
-version: 1.0.0
-date-released: 2026-02-14
+version: 1.2.0
+date-released: 2026-02-15

@@ -247,6 +247,7 @@ resources/            # Static resources bundled with the workflow
 data/                 # Input data and references (not versioned)
   raw/                # FASTQ files (downloaded or user-provided)
   ref/                # Reference genome, GTF, STAR index
+  toy/                # Toy data if downloaded 
   trimmed/            # Trimmed FASTQ files (generated only if read trimming is enabled)
 results/              # Outputs and logs (not versioned)
   qc/                 # FastQC / MultiQC reports
