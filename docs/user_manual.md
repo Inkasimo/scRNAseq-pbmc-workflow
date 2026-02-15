@@ -217,7 +217,7 @@ docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.7
 #### Exact Archival Image (Digest-Pinned)
 
 ```bash
-docker pull ghcr.io/Inkasimo/scrnaseq-pbmc-workflow@sha256:80354b76e76405636c43e73902236e0399d26978a214227afbafa46fc0555bb8
+docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.7@sha256:d8c571590493299c25193bfec9eef3a125782b4306dda05574cec3b71dace9af
 ````
 
 Use this image when strict reproducibility of archived results is required.
