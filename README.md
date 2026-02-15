@@ -44,7 +44,7 @@ pip install -r wrapper-requirements.txt
 - Required only if using run_analysis.py.
 - Not needed if running Snakemake directly via Docker.
 
--If you use venv activate the environment before using run_analysis.py.
+If you use venv, activate the environment before using run_analysis.py.
 
 ### 4. Download toy bundle
 
