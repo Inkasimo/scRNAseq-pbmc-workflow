@@ -204,7 +204,7 @@ rule all:
 
 rule ensure_fastqs_raw:
     output:
-        done=lambda wc: f"{config['pbmc'][wc.donor].get('fastq_base', f'data/raw/{wc.donor}')}/fastqs.done"
+        done="data/raw/{donor}/fastqs.done"
     params:
         url=lambda wc: config["pbmc"][wc.donor].get("url", ""),
         fqdir=lambda wc: str(config["pbmc"][wc.donor].get("fastq_base", f"data/raw/{wc.donor}")),
@@ -235,6 +235,7 @@ rule ensure_fastqs_raw:
              -O "{params.fqdir}/fastqs.tar" "{params.url}" >> "{log}" 2>&1
         tar -xf "{params.fqdir}/fastqs.tar" -C "{params.fqdir}" >> "{log}" 2>&1
 
+        mkdir -p "$(dirname "{output.done}")"
         tmp="{output.done}.tmp"
         echo ok > "$tmp"
         mv -f "$tmp" "{output.done}"
