@@ -67,7 +67,9 @@ tools required by the pipeline.
 - Providing Docker
 - Managing available CPU and memory resources
 
-Input data are downloaded automatically by the workflow unless explicitly disabled.
+FASTQs are downloaded only in sections that explicitly enable downloading (e.g. download_data, upstream, all).
+Otherwise the workflow validates that FASTQs already exist locally.
+
 A default configuration file is provided and does not require modification for
 standard execution.
 
@@ -77,8 +79,9 @@ Snakemake is used to define and orchestrate pipeline steps as a directed acyclic
 graph (DAG) of rules. Each rule produces one or more output files and may depend
 on outputs from upstream rules.
 
-The workflow is designed for explicit, target-driven execution rather than
-implicit end-to-end runs.
+The wrapper enforces section-based execution. 
+`all` exists, but most users should run explicit sections 
+(`upstream`, `downstream`, etc.) during development and debugging.
 
 ### Python Wrapper (run_analysis.py)
 
@@ -100,6 +103,22 @@ of host-side dependencies defined in `wrapper-requirements.txt`. These dependenc
 are used only by the wrapper and are not required when running Snakemake directly
 inside Docker.
 
+### FASTQ acquisition policy
+
+FASTQ handling is explicit and depends on the wrapper section:
+
+`download_data`, `download_data_and_qc`, `upstream`, `all`
+→ wrapper sets download_fastqs=true, and the workflow downloads FASTQs if missing.
+
+`qc`, `ref`, `align`, `downstream`, `all_no_download`, `upstream_no_download`
+→ wrapper does not enable downloads. The workflow only validates that FASTQs already exist.
+
+This is controlled by:
+
+io.download_fastqs (config default is false)
+
+wrapper runtime override: --config download_fastqs=true|false
+
 ### Success Indicators (.done Files)
 
 Each major pipeline step creates a .done file only after successful completion.
@@ -111,6 +130,11 @@ Each major pipeline step creates a .done file only after successful completion.
 - Trimming
 - Reference preparation
 - Alignment
+- Seurat object creation and QC
+- Seurat filtering and normalization
+- Seurat clustering and annotation
+- DEG/TOST (pseudobulk)
+- Networks
 
 Partial outputs may exist if a step is interrupted, but the absence of a .done
 file indicates that the step did not complete successfully.
@@ -148,7 +172,7 @@ and alignment results.
 
 As a guideline:
 
-- ~170 GB of free disk space is recommended for a full run on the PBMC dataset
+- ~170 GB of free disk space (order of magnitude) is recommended for a full run on the PBMC dataset
 (including reference files, FASTQs, and results).
 
 Disk usage may increase if optional steps such as BAM output or trimming are enabled.
@@ -187,7 +211,7 @@ This workflow can be executed using a versioned release, a digest-pinned archiva
 #### Versioned Release (recommended)
 
 ```bash
-docker pull ghcr.io/Inkasimo/scrnaseq-pbmc-workflow:v1.0.7
+docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.7
 ```
 
 #### Exact Archival Image (Digest-Pinned)
@@ -206,7 +230,7 @@ docker build -t scrnaseq-workflow -f containers/Dockerfile .
 
 Local builds are intended for development and testing. They are not guaranteed to be bit-identical to published container releases.
 
-### 2. (Optional) Install wrapper dependencies
+### (Optional) Install wrapper dependencies
 
 The Python wrapper requires a local Python installation (≥ 3.9) and one dependency.
 
@@ -221,7 +245,7 @@ Not needed if running Snakemake directly via Docker.
 
 Activate the environment every time before using run_analysis.py.
 
-### 3. Run the pipeline (wrapper)
+### Run the pipeline (wrapper)
 
 Run a dry run to inspect what would be executed:
 
@@ -248,13 +272,75 @@ This will:
 - Perform STARsolo alignment
 - Generate gene–cell count matrices
 
-### 4. Check outputs
+### Toy Demo (Chromosome 1 + downsampled FASTQs)
+
+The repository includes a compact toy bundle intended for fast sanity checks and demonstrations.
+
+##### Toy bundle contents
+
+- data/ref/toy/ — chromosome 1 mini-reference (FASTA + GTF + STAR index target dir)
+- data/toy/toy_donor/ — downsampled FASTQs (toy donor)
+
+#### Download
+
+```bash
+python3 run_analysis.py download_toy
+```
+
+This downloads a Zenodo-hosted tarball and extracts a data/ directory into the repo root.
+
+#### Run
+
+- dry-run
+
+```bash
+python3 run_analysis.py toy --dry-run
+```
+- Toy run
+
+```bash
+python3 run_analysis.py toy
+```
+
+#### Toy configuration
+
+The toy section automatically switches to:
+
+`config/config.toy.yaml`
+
+#### Important
+
+Toy mode expects FASTQs under:
+
+`data/toy/toy_donor/`
+
+If the FASTQs are missing or placed under a different folder name, the workflow will fail at ensure_fastqs_toy.
+
+- FASTQs are stored directly under data/toy/toy_donor/ (no nested -fastqs/ subfolder).
+- The .done sentinel is created at data/toy/toy_donor/fastqs.done.
+
+
+
+### Check outputs
 
 Pipeline outputs will appear under:
 
 `results/`
 
 Quality control reports and alignment outputs are organized by step and donor.
+
+**Example outputs**
+
+After an upstream run:
+
+- results/qc/multiqc/raw/multiqc_report.html
+- results/alignment/starsolo/raw/<donor>/Solo.out/Gene/filtered/
+
+After downstream:
+
+- results/downstream/seurat/<trim_state>/<donor>/...
+- results/downstream/deg_and_tost/<trim_state>/deg_and_tost/
+- results/downstream/networks/<trim_state>/
 
 ## 5. Configuration (config/config.yaml)
 
@@ -319,20 +405,47 @@ corresponding cleanup of generated outputs.
 The 10x Genomics barcode whitelist required by STARsolo is bundled directly with
 the pipeline at:
 
-resources/barcodes/3M-3pgex-may-2023_TRU.txt
+`resources/barcodes/3M-3pgex-may-2023_TRU.txt`
 
 This file is referenced via the configuration and is not downloaded at runtime.
 Bundling the whitelist avoids reliance on unstable external URLs and ensures
 reproducible execution.
 
+### MSigDB gene sets (used for enrichment)
+
+Gene sets used for enrichment analyses are bundled locally under:
+
+`resources/genesets/`
+
+Included sets:
+
+- h.all.v2026.1.Hs.symbols.gmt — MSigDB Hallmark collection
+- c7.all.v2026.1.Hs.symbols.gmt — MSigDB C7 (Immunologic Signatures)
+
+These files are referenced via the configuration:
+
+```yaml
+genesets:
+  hallmark_gmt: ...
+  c7_gmt: ...
+```
+
+They are used by downstream enrichment steps (GSEA / ORA in deg_and_tost
+and optional module enrichment in networks).
+
+Bundling gene sets locally avoids runtime dependency on external URLs and
+ensures deterministic enrichment results across executions.
+
+Users are responsible for ensuring compliance with MSigDB licensing terms
+when redistributing these resources.
 
 ## 6. Running the Workflow with the Python Wrapper
 
 The Python wrapper `run_analysis.py` provides a simplified, section-based
 interface for running the Snakemake workflow inside Docker.
 
-It requires users to explicitly choose what to run, reducing the risk of
-accidental full executions and simplifying interactive use.
+The wrapper requires an explicit section. That reduces the risk of accidental full runs compared with bare Snakemake, 
+while still supporting `all` for full execution.
 
 ### Wrapper Requirements (Host-side Only)
 
@@ -369,15 +482,14 @@ Typical sections include:
 - align
 - upstream
 - upstream_no_download
-- downstream
 - all
 - all_no_download
 - build_seurat_object_qc
 - filter_and_normalize_seurat
 - cluster_annotate_seurat
 - deg_and_tost
+- networks
 - downstream
-- network inference **Work in progress, not implemented yet**
 - unlock
 
 
@@ -442,27 +554,84 @@ python3 run_analysis.py align \
   --set-threads starsolo=8
 ```
 
-#### Trimmed vs Untrimmed Mode
+#### Donor Seurat QC (untrimmed/raw branch)
 
-Read trimming is disabled by default.
-
-To enable trimming for all applicable downstream steps:
-
-``` bash
-python3 run_analysis.py trim --cpus 8 --cores 8
+**Per donor**
+```bash
+python3 run_analysis.py build_seurat_object_qc --donor donor1
+```
+**All donors**
+```bash
+python3 run_analysis.py build_seurat_object_qc
 ```
 
-To run alignment on trimmed reads:
+#### Run normalization + HVG selection
 
-``` bash
-python3 run_analysis.py align \
-  --donor all \
-  --trimmed \
-  --cpus 8 --cores 8
+**Per donor**
+```bash
+python3 run_analysis.py filter_and_normalize_seurat --donor donor1
 ```
 
-Trimmed outputs are written to separate directories and do not overwrite
-untrimmed results.
+**All donors**
+```bash
+python3 run_analysis.py filter_and_normalize_seurat 
+```
+
+#### Cluster + annotate
+
+**Per donor**
+```bash
+python3 run_analysis.py cluster_annotate_seurat --donor donor1
+```
+
+**All donors**
+```bash
+python3 run_analysis.py cluster_annotate_seurat
+```
+
+#### Cross-donor pseudobulk DE + TOST
+
+```bash
+python3 run_analysis.py deg_and_tost
+```
+
+#### Network inference + modules
+
+```bash
+python3 run_analysis.py networks
+```
+#### Full downstream
+
+```bash
+python3 run_analysis.py downstream
+```
+
+
+#### Raw vs trimmed mode
+
+The workflow supports two execution modes:
+
+- **Untrimmed (default):** uses original FASTQs
+STARsolo outputs under results/alignment/starsolo/raw/
+- **Trimmed:** runs Cutadapt on R2 only, then uses trimmed FASTQs
+STARsolo outputs under results/alignment/starsolo/trimmed/
+
+Downstream directories use untrimmed|trimmed naming, 
+and map internally as:
+
+untrimmed → raw
+
+trimmed → trimmed
+```bash
+python3 run_analysis.py upstream --trimmed
+python3 run_analysis.py downstream --trimmed
+```
+
+or 
+
+```bash
+python3 run_analysis.py all --trimmed
+```
 
 #### Running upstream (download + QC + reference + alignment)
 
@@ -691,20 +860,22 @@ Once trimming is enabled, all downstream steps that depend on FASTQ inputs
 
 ### Trimmed vs Untrimmed Outputs
 
-Trimmed data are written to separate directories and do not overwrite untrimmed
-outputs.
+The workflow uses two related but distinct naming conventions:
 
-Typical locations include:
+`raw` and `trimmed` refer to STARsolo alignment branches
+(results/alignment/starsolo/raw/ or results/alignment/starsolo/trimmed/)
 
-- `data/trimmed/<donor>/` for trimmed FASTQs
-- `results/qc/fastqc/trimmed/` for trimmed QC reports
-- `results/alignment/starsolo/trimmed/` for trimmed alignment results
+untrimmed and trimmed refer to downstream analysis branches
+(results/downstream/.../{untrimmed|trimmed}/)
 
-This allows direct comparison between trimmed and untrimmed workflows if desired.
+The mapping between branches is:
 
-When running downstream steps explicitly, the `--trimmed` flag instructs the
-wrapper to use trimmed FASTQs as inputs instead of raw reads. This flag must be
-provided when running alignment or other steps that should operate on trimmed data.
+untrimmed → raw
+
+trimmed → trimmed
+
+This separation reflects legacy STARsolo directory naming while keeping downstream
+analysis state explicit. The naming is intentional and not redundant.
 
 ### Trimming Parameters
 
@@ -783,10 +954,15 @@ If Docker cannot bind-mount the path, the container will not be able to read
 
 If you encounter:
 
-    Snakefile "workflow/Snakefile" not found
+    ERROR: Current working directory no longer exists.
+    You likely moved/renamed/deleted the folder you were in   
 
-check Docker Desktop file-sharing settings, or run the workflow on a Linux or
+**Restarting WSL may help**
+
+Check Docker Desktop file-sharing settings, or run the workflow on a Linux or
 macOS system where bind mounts are always available.
+
+
 
 ## 12. Limitations and Planned Extensions
 
