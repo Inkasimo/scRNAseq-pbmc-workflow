@@ -392,8 +392,10 @@ def main() -> int:
     except FileNotFoundError:
         print(
             "ERROR: Current working directory no longer exists.\n"
-            "You likely moved/renamed/deleted the folder you were in.\n"
-            "cd into the repo root and re-run.",
+            "This can happen if you deleted or recloned the repository,\n"
+            "or if WSL/Docker mount state became inconsistent.\n"
+            "Or if Docker cannot run at all (e.g. corporate-managed machine with restricted virtualization).\n"
+            "Try restarting WSL and cd into the repository root.\n",
             file=sys.stderr,
         )
         return 2
