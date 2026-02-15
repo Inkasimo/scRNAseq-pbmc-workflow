@@ -1,9 +1,9 @@
 # config/config.toy.yaml
 workflow_target: toy
 pbmc:
-  donor1:
+  toy_donor:
     url: ""
-    fastq_base: "data/toy/donor1"
+    fastq_base: "data/toy/toy_donor"
 
 resources:
   fastqc_threads: 2

@@ -1,4 +1,4 @@
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18642101.svg)](https://doi.org/10.5281/zenodo.18642101)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18646825.svg)](https://doi.org/10.5281/zenodo.18646825)
 
 
 # scRNA-seq PBMC Workflow
@@ -26,7 +26,7 @@ git clone https://github.com/inkasimo/scRNAseq-pbmc-workflow.git
 ### 2. Pull the versioned Docker image (in repository)
 
 ```bash
-docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.6
+docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.7
 ```
 
 First pull may take several minutes (image ~1.5 GB).
@@ -83,6 +83,16 @@ Outputs written to:
 Representative example outputs from real run are available under:
 
 `docs/example_outputs/`
+
+## Example outputs
+
+Representative outputs from a full PBMC run are available under `docs/example_outputs/`.
+
+<p align="center">
+  <img src="docs/example_outputs/umap_by_cell_type_pred.png" width="48%" />
+  <img src="docs/example_outputs/volcano_B_like_vs_Mono_like.png" width="48%" />
+</p>
+
 
 
 ## What this pipeline does
