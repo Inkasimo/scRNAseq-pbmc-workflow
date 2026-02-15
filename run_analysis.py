@@ -394,7 +394,7 @@ def main() -> int:
             "ERROR: Current working directory no longer exists.\n"
             "This can happen if you deleted or recloned the repository,\n"
             "or if WSL/Docker mount state became inconsistent.\n"
-            "Or if Docker cannot run at all (e.g. corporate-managed machine with restricted virtualization).\n"
+            "or if Docker cannot run at all (e.g. corporate-managed machine with restricted virtualization).\n"
             "Try restarting WSL and cd into the repository root.\n",
             file=sys.stderr,
         )
