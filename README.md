@@ -1,7 +1,6 @@
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18646825.svg)](https://doi.org/10.5281/zenodo.18646825)
-
-
 # scRNA-seq PBMC Workflow
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18646825.svg)](https://doi.org/10.5281/zenodo.18646825)
 
 Reproducible, containerized single-cell RNA-seq workflow built with Snakemake + Docker, controlled via a Python CLI wrapper.
 
@@ -54,7 +53,7 @@ python3 run_analysis.py download_toy
 This downloads and extracts:
 
 - `data/ref/toy/` (chr1 reference files)
-- `data/toy/donor1/` (toy FASTQs)
+- `data/toy/toy_donor/` (toy FASTQs)
 
 
 ### 5. Run toy workflow
@@ -79,10 +78,6 @@ Outputs written to:
 
 `results/`
 
-
-Representative example outputs from real run are available under:
-
-`docs/example_outputs/`
 
 ## Example outputs
 
@@ -116,11 +111,9 @@ Representative outputs from a full PBMC run are available under `docs/example_ou
 
 ## Focus
 
-- Reproducible execution
-- Explicit workflow structure
-- Containerized dependencies
-- Clear separation between engineering (upstream) and analysis (downstream)
-
+- Reproducible, containerized execution
+- Explicit DAG-based workflow structure
+- Clear separation of engineering (upstream) and statistical analysis (downstream)
 
 ## Full Dataset Execution
 
@@ -166,30 +159,30 @@ See Quick Start
 
 #### Example runs:
 
-****Inspect available sections:****
+**Inspect available sections:**
 
 ```bash
 python3 run_analysis.py --list-sections
 ```
 
-****Inspect donors:****
+**Inspect donors:**
 
 ```bash
 python3 run_analysis.py --list-donors
 ```
 
-****Download data:****
+**Download data:**
 
 ```bash
 python3 run_analysis.py download_data --cpus 8 --cores 8
 ```
-****QC only:****
+**QC only:**
 
 ```bash
 python3 run_analysis.py qc --cpus 8 --cores 8
 ```
 
-****Align all donors:****
+**Align all donors:**
 
 ```bash
 python3 run_analysis.py align \
@@ -200,7 +193,7 @@ python3 run_analysis.py align \
 
 ```
 
-****Dry run (no execution, sanity check):****
+**Dry run (no execution, sanity check):**
 
 ```bash
 python3 run_analysis.py all --dry-run
@@ -220,7 +213,7 @@ python3 run_analysis.py all --trimmed
 
 This workflow can be run in **Directly with Snakemake inside Docker** 
 
-****Dry run****
+**Dry run**
 
 ```bash
 docker run --rm -it \
@@ -231,7 +224,7 @@ docker run --rm -it \
   ```
 
 
-****Run a specific target (example: one donor alignment):****
+**Run a specific target (example: one donor alignment):**
 
 ```bash
 docker run --rm -it \
@@ -262,7 +255,7 @@ results/              # Outputs and logs (not versioned)
   downstream/         # Downstream analysis results
 	deg_and_tost/     # DEG and TOST analysis results
 	seurat/           # Seurat objects and related plots and tables
-	networks/         # Network analysis results (Work in progress)
+	networks/         # Network analysis results 
 docs/                 # Documentation (user manual, report, notes, results layout)
   example_outputs/    # A small set of representative execution artifacts
 scripts/              # R-scripts and helpers
@@ -431,7 +424,7 @@ Project documentation is organized under the `docs/` directory:
 A stable snapshot of representative results are archived on Zenodo with DOI. 
 
 This archive includes:
-- Representative output data produced by the full pipeline (alignment and downstream analysis) (Work in progress).
+- Representative output data produced by the full pipeline (alignment and downstream analysis).
 - A small toy dataset (downsampled FASTQs) intended for demonstration and pipeline sanity-check runs only.
 
 
