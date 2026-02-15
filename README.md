@@ -283,7 +283,7 @@ docker run -v $PWD:/work -w /work ...  (bind-mount repo)
 +------------------------------------------------------+
 |                  Docker Container                    |
 |                                                      |
-|  Snakemake (workflow/Snakefile) → rules → tools      |
+|Snakemake (workflow/Snakefile) → rules → tools/scripts|
 |                                                      |
 +------------------------------------------------------+
 
