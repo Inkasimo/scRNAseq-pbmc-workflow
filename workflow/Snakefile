@@ -77,6 +77,8 @@ BUILD_STAR_INDEX = as_bool(config.get("build_star_index", None),
 def mode():
     return "trimmed" if trim_enabled() else "raw"
 
+def mq_suffix():
+    return "_toy" if WORKFLOW_TARGET == "toy" else ""
 
 def starsolo_root():
     return f"results/alignment/starsolo/{mode()}"
@@ -142,12 +144,14 @@ rule all:
 
         # Always run RAW QC
         expand("results/qc/fastqc/raw/{donor}/fastqc.done", donor=DONORS),
-        "results/qc/multiqc/raw/multiqc_report.html",
+        f"results/qc/multiqc/raw{mq_suffix()}/multiqc_report.html",
+
 
         # If trimmed mode: also run trimming + TRIMMED QC
         expand("data/trimmed/{donor}/trim.done", donor=DONORS) if is_trimmed() else [],
         expand("results/qc/fastqc/trimmed/{donor}/fastqc.done", donor=DONORS) if is_trimmed() else [],
-        "results/qc/multiqc/trimmed/multiqc_report.html" if is_trimmed() else [],
+        f"results/qc/multiqc/trimmed{mq_suffix()}/multiqc_report.html" if is_trimmed() else [],
+
 
         # Alignment:
         # - raw mode -> align raw
@@ -334,17 +338,19 @@ rule multiqc_raw:
     input:
         expand("results/qc/fastqc/raw/{donor}/fastqc.done", donor=DONORS)
     output:
-        "results/qc/multiqc/raw/multiqc_report.html"
+        report=f"results/qc/multiqc/raw{mq_suffix()}/multiqc_report.html"
     log:
         "results/logs/qc/multiqc_raw.log"
+    params:
+        outdir=lambda wc: f"results/qc/multiqc/raw{mq_suffix()}"
     shell:
         r"""
         set -euo pipefail
-        mkdir -p results/qc/multiqc/raw results/logs/qc
+        mkdir -p "{params.outdir}" results/logs/qc
 
         echo "[START] $(date)" > {log}
         multiqc results/qc/fastqc/raw \
-            -o results/qc/multiqc/raw \
+            -o "{params.outdir}" \
             --filename multiqc_report.html \
             >> {log} 2>&1
         echo "[END] $(date)" >> {log}
@@ -355,17 +361,19 @@ rule multiqc_trimmed:
     input:
         expand("results/qc/fastqc/trimmed/{donor}/fastqc.done", donor=DONORS)
     output:
-        "results/qc/multiqc/trimmed/multiqc_report.html"
+        report=f"results/qc/multiqc/trimmed{mq_suffix()}/multiqc_report.html"
     log:
         "results/logs/qc/multiqc_trimmed.log"
+    params:
+        outdir=lambda wc: f"results/qc/multiqc/trimmed{mq_suffix()}"
     shell:
         r"""
         set -euo pipefail
-        mkdir -p results/qc/multiqc/trimmed results/logs/qc
+        mkdir -p "{params.outdir}" results/logs/qc
 
         echo "[START] $(date)" > {log}
         multiqc results/qc/fastqc/trimmed \
-            -o results/qc/multiqc/trimmed \
+            -o "{params.outdir}" \
             --filename multiqc_report.html \
             >> {log} 2>&1
         echo "[END] $(date)" >> {log}

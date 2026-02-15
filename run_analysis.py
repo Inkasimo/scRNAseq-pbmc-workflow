@@ -14,11 +14,11 @@ SECTION_TARGETS = {
     "download_data_and_qc": [
         "data/raw/{donor}/fastqs.done",
         "results/qc/fastqc/raw/{donor}/fastqc.done",
-        "results/qc/multiqc/raw/multiqc_report.html",
+        "{MULTIQC_RAW}",
     ],
     "qc": [
         "results/qc/fastqc/raw/{donor}/fastqc.done",
-        "results/qc/multiqc/raw/multiqc_report.html",
+        "{MULTIQC_RAW}",
     ],
     "ref": [
         "data/ref/whitelist.done",
@@ -33,16 +33,16 @@ SECTION_TARGETS = {
     "trim_and_qc": [
         "data/trimmed/{donor}/trim.done",
         "results/qc/fastqc/trimmed/{donor}/fastqc.done",
-        "results/qc/multiqc/trimmed/multiqc_report.html",
+        "{MULTIQC_TRIMMED}",
         "results/qc/fastqc/raw/{donor}/fastqc.done",
-        "results/qc/multiqc/raw/multiqc_report.html",
+        "{MULTIQC_RAW}",
     ],
 
     # Internal target sets for upstream (do not expose as CLI sections)
     "upstream_raw": [
         "data/raw/{donor}/fastqs.done",
         "results/qc/fastqc/raw/{donor}/fastqc.done",
-        "results/qc/multiqc/raw/multiqc_report.html",
+        "{MULTIQC_RAW}",
         "data/ref/whitelist.done",
         "data/ref/star_index.done",
         "results/alignment/starsolo/raw/{donor}/starsolo.done",
@@ -50,27 +50,27 @@ SECTION_TARGETS = {
     "upstream_trimmed": [
         "data/raw/{donor}/fastqs.done",
         "results/qc/fastqc/raw/{donor}/fastqc.done",
-        "results/qc/multiqc/raw/multiqc_report.html",
+        "{MULTIQC_RAW}",
         "data/trimmed/{donor}/trim.done",
         "results/qc/fastqc/trimmed/{donor}/fastqc.done",
-        "results/qc/multiqc/trimmed/multiqc_report.html",
+        "{MULTIQC_TRIMMED}",
         "data/ref/whitelist.done",
         "data/ref/star_index.done",
         "results/alignment/starsolo/trimmed/{donor}/starsolo.done",
     ],
     "upstream_no_download_raw": [
         "results/qc/fastqc/raw/{donor}/fastqc.done",
-        "results/qc/multiqc/raw/multiqc_report.html",
+        "{MULTIQC_RAW}",
         "data/ref/whitelist.done",
         "data/ref/star_index.done",
         "results/alignment/starsolo/raw/{donor}/starsolo.done",
     ],
     "upstream_no_download_trimmed": [
         "results/qc/fastqc/raw/{donor}/fastqc.done",
-        "results/qc/multiqc/raw/multiqc_report.html",
+        "{MULTIQC_RAW}",
         "data/trimmed/{donor}/trim.done",
         "results/qc/fastqc/trimmed/{donor}/fastqc.done",
-        "results/qc/multiqc/trimmed/multiqc_report.html",
+        "{MULTIQC_TRIMMED}",
         "data/ref/whitelist.done",
         "data/ref/star_index.done",
         "results/alignment/starsolo/trimmed/{donor}/starsolo.done",
@@ -135,6 +135,17 @@ SECTION_TARGETS = {
 DEFAULT_TOY_ZENODO_URL = (
     "https://zenodo.org/records/18646825/files/toy_data_bundle.tar.gz?download=1"
 )
+
+
+def _is_toy_mode(args) -> bool:
+    # After toy override, args.configfile becomes config/config.toy.yaml
+    return (args.section == "toy") or str(getattr(args, "configfile", "")).endswith("config.toy.yaml")
+
+
+def _multiqc_path(is_toy: bool, trimmed: bool) -> str:
+    suffix = "_toy" if is_toy else ""
+    branch = "trimmed" if trimmed else "raw"
+    return f"results/qc/multiqc/{branch}{suffix}/multiqc_report.html"
 
 
 def _docker_bind_mount_works(repo_root: Path, image: str) -> bool:
@@ -408,13 +419,17 @@ def main() -> int:
     if args.section == "toy":
         args.configfile = "config/config.toy.yaml"
         donors = load_donors(args.configfile)
-
+    
+    is_toy = _is_toy_mode(args)
+    mq_raw = _multiqc_path(is_toy=is_toy, trimmed=False)
+    mq_trimmed = _multiqc_path(is_toy=is_toy, trimmed=True)
 
     # Resolve targets
     targets: list[str] = []
 
     if args.section in ("download_data", "download_data_and_qc", "qc", "trim", "trim_and_qc"):
         for t in SECTION_TARGETS[args.section]:
+            t = t.replace("{MULTIQC_RAW}", mq_raw).replace("{MULTIQC_TRIMMED}", mq_trimmed)
             if "{donor}" in t:
                 targets.extend(t.format(donor=d) for d in donors)
             else:
@@ -438,6 +453,7 @@ def main() -> int:
             key = "upstream_no_download_trimmed" if getattr(args, "trimmed", False) else "upstream_no_download_raw"
 
         for t in SECTION_TARGETS[key]:
+            t = t.replace("{MULTIQC_RAW}", mq_raw).replace("{MULTIQC_TRIMMED}", mq_trimmed)
             if "{donor}" in t:
                 targets.extend(t.format(donor=d) for d in donors)
             else:
