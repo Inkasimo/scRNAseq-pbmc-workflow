@@ -1,6 +1,8 @@
 # scRNA-seq PBMC Workflow
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18646825.svg)](https://doi.org/10.5281/zenodo.18646825)
+[![CI](https://github.com/Inkasimo/scRNAseq-pbmc-workflow/actions/workflows/ci.yml/badge.svg)](https://github.com/Inkasimo/scRNAseq-pbmc-workflow/actions/workflows/ci.yml)
+
 
 Reproducible, containerized single-cell RNA-seq workflow built with Snakemake + Docker, controlled via a Python CLI wrapper.
 

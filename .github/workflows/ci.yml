@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  toy-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: docker build -t scrnaseq-pbmc-workflow:ci .
+
+      - name: Download toy bundle
+        run: |
+          python run_analysis.py download_toy
+
+      - name: Run toy workflow (builds STAR index)
+        run: |
+          python run_analysis.py toy \
+            --image scrnaseq-pbmc-workflow:ci \
+            --cpus 2 --cores 2 -j 1
+
+      - name: Assert outputs (toy_donor)
+        run: |
+          set -euo pipefail
+
+          # Index + whitelist sentinels (index is built during toy run)
+          test -f data/ref/toy/whitelist.done
+          test -f data/ref/toy/star_index_chr1/index.done
+
+          # Toy FASTQ sentinel
+          test -f data/toy/toy_donor/fastqs.done
+
+          # QC + MultiQC
+          test -f results/qc/fastqc/raw/toy_donor/fastqc.done
+          test -f results/qc/multiqc/raw_toy/multiqc_report.html
+
+          # STARsolo sentinel + a real matrix file (proves it actually ran)
+          test -f results/alignment/starsolo/raw/toy_donor/starsolo.done
+          test -s results/alignment/starsolo/raw/toy_donor/Solo.out/Gene/filtered/matrix.mtx
+
+          echo "OK"
