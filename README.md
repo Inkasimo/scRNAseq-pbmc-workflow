@@ -190,7 +190,6 @@ python3 run_analysis.py align \
   --cpus 8 --cores 8 \
   -j 1 \
   --set-threads starsolo=8
-
 ```
 
 **Dry run (no execution, sanity check):**
@@ -289,7 +288,7 @@ docker run -v $PWD:/work -w /work ...  (bind-mount repo)
 +------------------------------------------------------+
 ```
 
-### Rulegraph (untrimmed reads)
+### Rule graph (untrimmed reads)
 
 <p align="center">
   <img src="docs/rulegraph.png" width="48%" />
@@ -363,7 +362,6 @@ The 10x Genomics barcode whitelist is bundled directly in the repository:
 
 `resources/barcodes/3M-3pgex-may-2023_TRU.txt`
 
-
 This avoids reliance on unstable upstream URLs and ensures reproducible execution.
 
 ### Gene sets (MSigDB)
@@ -378,7 +376,6 @@ This includes:
 MSigDB Hallmark gene sets:
 
 `h.all.v2026.1.Hs.symbols.gmt`
-
 
 MSigDB C7 (immunologic signatures):
 

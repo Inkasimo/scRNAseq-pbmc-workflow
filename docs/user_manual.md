@@ -351,6 +351,7 @@ The pipeline is configured via a single YAML file located at:
 A complete, working configuration is provided. No changes are required to run
 the pipeline using the default PBMC dataset.
 
+
 ### What Users May Edit
 
 Users may modify the configuration to adapt the pipeline to different datasets
@@ -367,6 +368,8 @@ or execution environments. Common use cases include:
 3. Resource-related parameters
 - Thread counts for individual tools
 - Memory-related options (where applicable)
+
+4. Downstream analysis parameters and thresholds
 
 These changes are optional and intended for users who understand the implications
 for reproducibility and results.
@@ -819,7 +822,7 @@ Execution logs for individual pipeline steps
 
 This directory is not versioned.
 
-## Completion Markers (.done Files)
+### Completion Markers (.done Files)
 
 Many directories contain `.done` files that indicate successful completion of
 a pipeline step.
@@ -954,15 +957,18 @@ If Docker cannot bind-mount the path, the container will not be able to read
 
 If you encounter:
 
+    ```bash
     ERROR: Current working directory no longer exists.
-    You likely moved/renamed/deleted the folder you were in   
-
+    This can happen if you deleted or recloned the repository,
+    or if WSL/Docker mount state became inconsistent,
+    or if Docker cannot run at all (e.g. corporate-managed machine with restricted virtualization).
+    Try restarting WSL and cd into the repository root. 
+    ```
+	
 **Restarting WSL may help**
 
 Check Docker Desktop file-sharing settings, or run the workflow on a Linux or
 macOS system where bind mounts are always available.
-
-
 
 ## 12. Limitations and Planned Extensions
 
@@ -1008,8 +1014,6 @@ model by:
 
 HPC execution is outside the scope of this project and intentionally left to
 user customization.
-
-
 
 ## Final Notes
 
