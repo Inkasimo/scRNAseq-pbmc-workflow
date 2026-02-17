@@ -28,7 +28,7 @@ git clone https://github.com/inkasimo/scRNAseq-pbmc-workflow.git
 ### 2. Pull the versioned Docker image (in repository)
 
 ```bash
-docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.7
+docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.1.0
 ```
 
 First pull may take several minutes (image ~1.5 GB).

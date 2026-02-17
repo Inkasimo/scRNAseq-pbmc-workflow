@@ -211,16 +211,20 @@ This workflow can be executed using a versioned release, a digest-pinned archiva
 #### Versioned Release (recommended)
 
 ```bash
-docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.7
+docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.1.0
 ```
 
 #### Exact Archival Image (Digest-Pinned)
 
-```bash
-docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.0.7@sha256:d8c571590493299c25193bfec9eef3a125782b4306dda05574cec3b71dace9af
-````
+Use the digest-pinned image corresponding to release `v1.0.7`
+commit `36c8df65e602b38bba025796cd7f8c56e88e94a8` for fully reproducible runs:
 
-Use this image when strict reproducibility of archived results is required.
+```bash
+docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow@sha256:d8c571590493299c25193bfec9eef3a125782b4306dda05574cec3b71dace9af
+```
+
+This command retrieves the exact container image used for the archived
+`v1.0.7` release. 
 
 #### Local Development Build
 
