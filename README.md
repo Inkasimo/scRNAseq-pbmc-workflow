@@ -1,6 +1,6 @@
 # scRNA-seq PBMC Workflow
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18646825.svg)](https://doi.org/10.5281/zenodo.18646825)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18685612.svg)](https://doi.org/10.5281/zenodo.18685612)
 [![CI](https://github.com/Inkasimo/scRNAseq-pbmc-workflow/actions/workflows/ci.yml/badge.svg)](https://github.com/Inkasimo/scRNAseq-pbmc-workflow/actions/workflows/ci.yml)
 
 
@@ -87,11 +87,16 @@ Outputs written to:
 
 A small set of outputs from a full PBMC run is available under `docs/example_outputs/`, illustrating key QC, clustering, and differential expression results.
 
+
 <p align="center">
   <img src="docs/example_outputs/umap_by_cell_type_pred.png" width="48%" />
   <img src="docs/example_outputs/volcano_B_like_vs_Mono_like.png" width="48%" />
 </p>
 
+
+A stable snapshot of representative full-run analysis outputs is archived on Zenodo:
+
+`https://doi.org/10.5281/zenodo.18685612`
 
 
 ## What this pipeline does
