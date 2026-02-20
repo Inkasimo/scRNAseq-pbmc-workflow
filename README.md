@@ -6,9 +6,11 @@
 
 Reproducible, containerized single-cell RNA-seq workflow built with Snakemake + Docker, controlled via a Python CLI wrapper.
 
+**Network analysis under construction**
+
 End-to-end execution:
 
-**FASTQ → QC → STARsolo → Seurat → DESeq2/TOST → enrichment → network analysis**
+**FASTQ → QC → STARsolo → Seurat → DESeq2/TOST → enrichment**
 
 CI runs the toy workflow (including STAR index build on chr1) to validate reproducibility.
 
@@ -113,7 +115,6 @@ A stable snapshot of representative full-run analysis outputs is archived on Zen
 - Cell-level QC and annotation
 - Differential expression (DESeq2) and equivalence testing (TOST)
 - Enrichment analysis
-- Co-expression network analysis and network modules
 - Module enrichment analysis
 
 ## Focus
@@ -261,7 +262,6 @@ results/              # Outputs and logs (not versioned)
   downstream/         # Downstream analysis results
 	deg_and_tost/     # DEG and TOST analysis results
 	seurat/           # Seurat objects and related plots and tables
-	networks/         # Network analysis results 
 docs/                 # Documentation (technical summary, user manual, report, results layout, rulegraph)
   example_outputs/    # A small set of representative execution artifacts
 scripts/              # R-scripts and helpers
@@ -356,7 +356,6 @@ Cross-donor
   +-- DESeq2 (DE)
   +-- TOST (equivalence test)
   +-- enrichment (GSEA / ORA)
-  +-- co-expression network analysis
 
 ```
 
