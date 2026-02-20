@@ -335,6 +335,13 @@ def main() -> int:
     if not args.section:
         p.error("You must choose a section to run.")
 
+    if args.section == "networks":
+        print(
+            "ERROR: networks section is disabled: Network analysis is currently unavailable.",
+            file=sys.stderr,
+        )
+        return 2
+
     if args.section == "download_toy":
         import urllib.request
         import tarfile
@@ -352,12 +359,6 @@ def main() -> int:
             return 0
 
         
-        if args.section == "networks":
-            print(
-                "ERROR: networks section is disabled: Network analysis is currently unavailable.",
-                file=sys.stderr,
-            )
-        return 2
 
         tar_path = Path("toy_data_bundle.tar.gz")
 
