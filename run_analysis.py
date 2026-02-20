@@ -296,7 +296,7 @@ def main() -> int:
 
     # Always notify: networks disabled (prints on every run)
     print(
-        "NOTE: Network analysis is currently unavailable and will be skipped (pending internal review).",
+        "NOTE: Network analysis is currently unavailable and will be skipped.",
         file=sys.stderr,
     )
 
