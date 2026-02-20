@@ -134,8 +134,6 @@ Each major pipeline step creates a .done file only after successful completion.
 - Seurat filtering and normalization
 - Seurat clustering and annotation
 - DEG/TOST (pseudobulk)
-- Networks
-
 Partial outputs may exist if a step is interrupted, but the absence of a .done
 file indicates that the step did not complete successfully.
 
@@ -344,7 +342,7 @@ After downstream:
 
 - results/downstream/seurat/<trim_state>/<donor>/...
 - results/downstream/deg_and_tost/<trim_state>/deg_and_tost/
-- results/downstream/networks/<trim_state>/
+
 
 ## 5. Configuration (config/config.yaml)
 
@@ -437,8 +435,7 @@ genesets:
   c7_gmt: ...
 ```
 
-They are used by downstream enrichment steps (GSEA / ORA in deg_and_tost
-and optional module enrichment in networks).
+They are used by downstream enrichment steps (GSEA / ORA in deg_and_tost).
 
 Bundling gene sets locally avoids runtime dependency on external URLs and
 ensures deterministic enrichment results across executions.
@@ -495,7 +492,6 @@ Typical sections include:
 - filter_and_normalize_seurat
 - cluster_annotate_seurat
 - deg_and_tost
-- networks
 - downstream
 - unlock
 
@@ -602,11 +598,7 @@ python3 run_analysis.py cluster_annotate_seurat
 python3 run_analysis.py deg_and_tost
 ```
 
-#### Network inference + modules
 
-```bash
-python3 run_analysis.py networks
-```
 #### Full downstream
 
 ```bash
