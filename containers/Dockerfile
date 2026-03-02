@@ -65,5 +65,11 @@ COPY renv/activate.R /work/renv/activate.R
 COPY .Rprofile /work/.Rprofile
 
 # Restore into /opt/renv/library
-RUN R -q -e 'renv::settings$bioconductor.version("3.18"); renv::restore(project="/work", lockfile="/work/renv.lock", prompt=FALSE, rebuild=TRUE)'
+RUN R -q -e '\
+renv::settings$bioconductor.version("3.18"); \
+lock <- renv::lockfile_read("/work/renv.lock"); \
+pkgs <- setdiff(names(lock$Packages), "muumi"); \
+renv::restore(project="/work", lockfile="/work/renv.lock", prompt=FALSE, rebuild=TRUE, packages=pkgs); \
+renv::install("fhaive/muumi") \
+'
 CMD ["bash"]
