@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y \
 	libpng-dev libjpeg-dev libtiff5-dev \
     libfreetype6-dev libharfbuzz-dev libfribidi-dev \
 	pkg-config libfontconfig1-dev libcairo2-dev libglib2.0-dev \
+	libfftw3-3 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
