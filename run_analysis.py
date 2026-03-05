@@ -107,17 +107,25 @@ SECTION_TARGETS = {
     "deg_and_tost_trimmed": [
         "results/downstream/deg_and_tost/trimmed/deg_and_tost/deg_and_tost.done",
     ],
+    "networks_untrimmed": [
+        "results/downstream/networks/untrimmed/networks.done",
+    ],
+    "networks_trimmed": [
+        "results/downstream/networks/trimmed/networks.done",
+    ],
     "downstream_untrimmed": [
         "results/downstream/seurat/untrimmed/{donor}/seurat_and_qc/seurat_qc.done",
         "results/downstream/seurat/untrimmed/{donor}/seurat_filt_normalized/seurat_filt_normalize.done",
         "results/downstream/seurat/untrimmed/{donor}/seurat_cluster_annot/seurat_cluster_annot.done",
         "results/downstream/deg_and_tost/untrimmed/deg_and_tost/deg_and_tost.done",
+        "results/downstream/networks/untrimmed/networks.done",
     ],
     "downstream_trimmed": [
         "results/downstream/seurat/trimmed/{donor}/seurat_and_qc/seurat_qc.done",
         "results/downstream/seurat/trimmed/{donor}/seurat_filt_normalized/seurat_filt_normalize.done",
         "results/downstream/seurat/trimmed/{donor}/seurat_cluster_annot/seurat_cluster_annot.done",
         "results/downstream/deg_and_tost/trimmed/deg_and_tost/deg_and_tost.done",
+        "results/downstream/networks/trimmed/networks.done",
     ],
 
     "unlock": [],
@@ -274,7 +282,6 @@ def main() -> int:
     sp_networks.add_argument("--trimmed", action="store_true")
     add_common(sp_networks)
 
-
     sp_downstream = sub.add_parser("downstream")
     sp_downstream.add_argument("--trimmed", action="store_true")
     add_common(sp_downstream)
@@ -295,10 +302,6 @@ def main() -> int:
     args = p.parse_args()
 
     # Always notify: networks disabled (prints on every run)
-    print(
-        "NOTE: Network analysis is currently unavailable and will be skipped.",
-        file=sys.stderr,
-    )
 
     if args.list_sections:
         print("Available sections:")
@@ -335,12 +338,6 @@ def main() -> int:
     if not args.section:
         p.error("You must choose a section to run.")
 
-    if args.section == "networks":
-        print(
-            "ERROR: networks section is disabled: Network analysis is currently unavailable.",
-            file=sys.stderr,
-        )
-        return 2
 
     if args.section == "download_toy":
         import urllib.request

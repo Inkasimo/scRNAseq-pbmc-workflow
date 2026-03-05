@@ -24,3 +24,4 @@ withCallingHandlers
 library
 toy_data_bundle.tar.gz
 .venv/
+minet-*.txt
