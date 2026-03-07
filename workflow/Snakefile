@@ -115,8 +115,7 @@ def resolve_fastq_dir(donor):
 
 # ALL RULE
 DEG_ENABLED = as_bool(config.get("deg_and_tost", {}).get("enabled", True))
-NET_ENABLED = False
-print("NOTE: Network analysis is currently unavailable and will be skipped (pending internal review).")
+NET_ENABLED = True
 CLUST_ENABLED=as_bool(config.get("seurat_cluster_annot", {}).get("enabled", True))
 FILT_NORM_ENABLED=as_bool(config.get("seurat_filt_normalize", {}).get("enabled", True))
 
@@ -906,7 +905,7 @@ rule networks:
         celltype_sets="scripts/celltype_sets.R",
         markers="scripts/markers_pbmc.R",
         # Muumi network script (your rewritten one)
-        script="scripts/build_networks_and_modules_muumi.r",
+        script="scripts/build_networks_and_modules_muumi.R",
         deg_done=lambda wc: f"results/downstream/deg_and_tost/{wc.trim_state}/deg_and_tost/deg_and_tost.done",
         hallmark_gmt=lambda wc: config["genesets"]["hallmark_gmt"],
         c7_gmt=lambda wc: config["genesets"]["c7_gmt"],
@@ -985,7 +984,7 @@ rule networks:
           --muumi_quantile {params.muumi_quantile} \
           \
           --consensus_min_donors {params.consensus_min_donors} \
-          --muumi_module_method "{params.module_method}" \
+          --muumi_module_method "{params.muumi_module_method}" \
           \
           --deg_tables_dir "{params.deg_tables_dir}" \
           --hallmark_gmt "{input.hallmark_gmt}" \
