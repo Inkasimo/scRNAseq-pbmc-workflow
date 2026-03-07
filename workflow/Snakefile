@@ -937,21 +937,15 @@ rule networks:
 
         # Per-donor sparsification on Muumi weight (rank-derived)
         # NOTE: this replaces cor_method / min_abs_cor / positive_only / require_same_sign
-        muumi_top_k_gene=lambda wc: int(config.get("muumi", {}).get("sparsify", {}).get("top_k_gene", 100)),
+        muumi_top_k_gene=lambda wc: int(config.get("muumi", {}).get("sparsify", {}).get("top_k_gene", 75)),
         muumi_quantile=lambda wc: float(config.get("muumi", {}).get("sparsify", {}).get("quantile", 0.0)),  # 0 disables
-        muumi_k_cap=lambda wc: int(config.get("muumi", {}).get("sparsify", {}).get("k_cap", 0)),            # 0 = no extra cap
 
         # Cross-donor replicate-stability filter (N=4 -> recommend 2)
         consensus_min_donors=lambda wc: int(config.get("muumi", {}).get("consensus", {}).get("min_donors", 2)),
 
         # Graph assembly + modules
-        lcc_target_frac=lambda wc: float(config.get("muumi", {}).get("graph", {}).get("lcc_target_frac", 0.80)),
-        min_edges_per_node=lambda wc: int(config.get("muumi", {}).get("graph", {}).get("min_edges_per_node", 10)),
-        max_edges_per_node=lambda wc: int(config.get("muumi", {}).get("graph", {}).get("max_edges_per_node", 30)),
-        module_method=lambda wc: str(config.get("muumi", {}).get("modules", {}).get("method", "louvain")),
+        muumi_module_method=lambda wc: str(config.get("muumi", {}).get("modules", {}).get("method", "louvain")),
 
-        # Enrichment toggles (kept)
-        enrichment_enabled=lambda wc: bool(config.get("network", {}).get("enrichment", {}).get("enabled", True)),
     shell:
         r"""
         set -euo pipefail
@@ -968,10 +962,6 @@ rule networks:
         test -d "{params.deg_tables_dir}"
         test -s "{input.hallmark_gmt}"
         test -s "{input.c7_gmt}"
-
-        # Enrichment boolean for R
-        ENR="{params.enrichment_enabled}"
-        if [ "$ENR" = "True" ] || [ "$ENR" = "true" ]; then ENR="TRUE"; else ENR="FALSE"; fi
 
         Rscript "{input.script}" \
           --seurat "$SEURAT_CSV" \
@@ -993,18 +983,13 @@ rule networks:
           \
           --muumi_top_k_gene {params.muumi_top_k_gene} \
           --muumi_quantile {params.muumi_quantile} \
-          --muumi_k_cap {params.muumi_k_cap} \
           \
           --consensus_min_donors {params.consensus_min_donors} \
-          --lcc_target_frac {params.lcc_target_frac} \
-          --min_edges_per_node {params.min_edges_per_node} \
-          --max_edges_per_node {params.max_edges_per_node} \
-          --module_method "{params.module_method}" \
+          --muumi_module_method "{params.module_method}" \
           \
           --deg_tables_dir "{params.deg_tables_dir}" \
           --hallmark_gmt "{input.hallmark_gmt}" \
           --c7_gmt "{input.c7_gmt}" \
-          --enrichment_enabled "$ENR" \
           > "{log}" 2>&1
 
         tmp="{output.done}.tmp"

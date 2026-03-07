@@ -620,7 +620,7 @@ for (set_name in names(ct_sets)) {
 )
 
   saveRDS(g, file=file.path(out_set, "graph_muumi.rds"))
-  write.table(graph_stats(g), file=file.path(out_set, "stats_muumi_replicable.tsv"),
+  write.table(graph_stats(g), file=file.path(out_set, "stats_muumi.tsv"),
               sep="\t", row.names=FALSE, quote=FALSE)
 
   # ============================================================

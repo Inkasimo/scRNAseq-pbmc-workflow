@@ -2599,6 +2599,17 @@
       ],
       "Hash": "aa4a7717b5760a769c7fd3d34614f2a2"
     },
+    "org.Hs.eg.db": {
+      "Package": "org.Hs.eg.db",
+      "Version": "3.18.0",
+      "Source": "Bioconductor",
+      "Requirements": [
+        "AnnotationDbi",
+        "R",
+        "methods"
+      ],
+      "Hash": "120d734b7c6eaed99d8f5f61e6c125ed"
+    },
     "pamr": {
       "Package": "pamr",
       "Version": "1.56.1",
