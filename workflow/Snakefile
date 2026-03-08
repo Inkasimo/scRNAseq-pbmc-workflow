@@ -919,14 +919,14 @@ rule networks:
         deg_tables_dir=lambda wc: f"results/downstream/deg_and_tost/{wc.trim_state}/deg_and_tost/tables",
 
         # --- front-end stays the same ---
-        celltype_sets_list=lambda wc: ",".join(config.get("network", {}).get("celltype_sets", [])),
         min_cells_per_donor_group=lambda wc: int(config.get("network", {}).get("min_cells_per_donor_group", 200)),
         metacell_size=lambda wc: int(config.get("network", {}).get("metacells", {}).get("size", 20)),
         seed=lambda wc: int(config.get("network", {}).get("metacells", {}).get("seed", 42)),
         metacell_input=lambda wc: str(config.get("network", {}).get("metacell_input", "log")),
         gene_detect_frac=lambda wc: float(config.get("network", {}).get("gene_filter", {}).get("min_detect_frac", 0.05)),
         hvg_n=lambda wc: int(config.get("network", {}).get("gene_filter", {}).get("hvg_n", 3000)),
-
+        network_set_names=lambda wc: ",".join(config.get("network", {}).get("celltype_sets", [])),
+        
         # --- Muumi-specific knobs ---
         # MINET ensemble inside each donor
         muumi_iMethods=lambda wc: ",".join(config.get("muumi", {}).get("minet", {}).get("iMethods", ["clr"])),
@@ -966,6 +966,7 @@ rule networks:
           --seurat "$SEURAT_CSV" \
           --outdir "{params.outdir}" \
           --celltype_sets "{input.celltype_sets}" \
+          --network_set_names "{params.network_set_names}" \
           --markers "{input.markers}" \
           --donor_names "{params.donor_names}" \
           --metacell_input "{params.metacell_input}" \

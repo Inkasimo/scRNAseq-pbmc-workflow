@@ -67,6 +67,8 @@ option_list <- list(
               help="Local Hallmark GMT file path (required for module ORA)."),
   make_option("--c7_gmt", type="character", default="",
               help="Local C7 GMT file path (required for module ORA).")
+  make_option("--network_set_names", type="character", default="",
+            help="Optional comma-separated subset of network set names to run (e.g. CD4,B_cells).")
 )
 
 opt <- parse_args(OptionParser(option_list = option_list))
@@ -319,6 +321,16 @@ if (exists("celltype_sets")) {
 }
 if (!is.list(ct_sets) || is.null(names(ct_sets))) stop("Celltype set object must be a named list.")
 
+if (nzchar(opt$network_set_names)) {
+  keep_sets <- trimws(strsplit(opt$network_set_names, ",", fixed = TRUE)[[1]])
+  keep_sets <- keep_sets[nzchar(keep_sets)]
+  bad <- setdiff(keep_sets, names(ct_sets))
+  if (length(bad) > 0) {
+    stop("Unknown network set(s): ", paste(bad, collapse = ", "))
+  }
+  ct_sets <- ct_sets[keep_sets]
+}
+
 markers_pbmc <- NULL
 if (nzchar(opt$markers)) {
   if (!file.exists(opt$markers)) stop("Missing: ", opt$markers)
@@ -499,16 +511,12 @@ for (set_name in names(ct_sets)) {
       xlab="Muumi weight (1/rank)"
     )
 
-  ed_log <- -log10(ed$weight + 1e-12)
-  ed_log <- max(ed_log, na.rm = TRUE) - ed_log + 1
-
   plot_hist_png(
-    ed_log,
+    -log10(ed$weight + 1e-12),
     file.path(plots_donor, sprintf("muumi_edge_weight_hist_sparsified_log_%s.png", d)),
-    main = sprintf("%s: donor %s Muumi weights (sparsified, log-scale)", set_name, d),
-    xlab = "Gephi-friendly Muumi weight"
+    main = sprintf("%s: donor %s Muumi weights (sparsified, -log10 scale)", set_name, d),
+    xlab = "-log10(Muumi weight)"
   )
-
     # Build donor graph + LCC (kept)
     g_donor <- igraph::graph_from_data_frame(ed %>% dplyr::select(from, to, weight), directed=FALSE)
     g_donor <- igraph::simplify(g_donor, remove.multiple=TRUE, remove.loops=TRUE)
@@ -525,15 +533,12 @@ for (set_name in names(ct_sets)) {
       xlab="Muumi weight (1/rank)"
     )
 
-    ed2_log <- -log10(ed2$weight + 1e-12)
-    ed2_log <- max(ed2_log, na.rm = TRUE) - ed2_log + 1
-
     plot_hist_png(
-    ed2_log,
-    file.path(plots_donor, sprintf("muumi_edge_weight_hist_postLCC_log_%s.png", d)),
-    main = sprintf("%s: donor %s Muumi weights (post donor-LCC, log-scale)", set_name, d),
-    xlab = "Gephi-friendly Muumi weight"
-  )
+      -log10(ed2$weight + 1e-12),
+      file.path(plots_donor, sprintf("muumi_edge_weight_hist_postLCC_log_%s.png", d)),
+      main = sprintf("%s: donor %s Muumi weights (post donor-LCC, -log10 scale)", set_name, d),
+      xlab = "-log10(Muumi weight)"
+    )
 
     donor_edges[[d]] <- ed2
 
