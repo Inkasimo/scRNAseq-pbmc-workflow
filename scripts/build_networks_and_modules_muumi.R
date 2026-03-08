@@ -71,6 +71,7 @@ option_list <- list(
 
 opt <- parse_args(OptionParser(option_list = option_list))
 
+
 # -------------------------
 # Helpers
 # -------------------------
@@ -80,9 +81,6 @@ dir.create(file.path(opt$outdir, "consensus"), recursive = TRUE, showWarnings = 
 dir.create(file.path(opt$outdir, "tables"), recursive = TRUE, showWarnings = FALSE)
 dir.create(file.path(opt$outdir, "plots"), recursive = TRUE, showWarnings = FALSE)
 
-old_wd <- getwd()
-setwd(opt$outdir)
-on.exit(setwd(old_wd), add = TRUE)
 
 read_rds_list <- function(x) {
   xs <- strsplit(x, ",", fixed=TRUE)[[1]]
