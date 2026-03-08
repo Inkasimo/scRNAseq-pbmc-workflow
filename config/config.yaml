@@ -80,7 +80,7 @@ network:
     - CD4
     - B_cells
     - CD14_mono
-    
+
   # Skip donor × celltype combinations with too few cells
   min_cells_per_donor_group: 200
 

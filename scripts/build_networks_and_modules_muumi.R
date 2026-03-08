@@ -553,9 +553,10 @@ for (set_name in names(ct_sets)) {
                 sep="\t", row.names=FALSE, quote=FALSE)
   }
 
-  if (length(donor_edges) < opt$consensus_min_donors) {
-    message("Not enough donors for replicate-stable network in set ", set_name, " (have ", length(donor_edges), ")")
-    next
+  if (length(donor_edges) < length(donors)) {
+  message("Not enough donor networks for set ", set_name,
+          " (have ", length(donor_edges), ", require all ", length(donors), ")")
+  next
   }
 
   # Universe: genes present in >= consensus_min_donors donors (same as your logic)
