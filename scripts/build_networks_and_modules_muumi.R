@@ -66,7 +66,7 @@ option_list <- list(
   make_option("--hallmark_gmt", type="character", default="",
               help="Local Hallmark GMT file path (required for module ORA)."),
   make_option("--c7_gmt", type="character", default="",
-              help="Local C7 GMT file path (required for module ORA).")
+              help="Local C7 GMT file path (required for module ORA)."),
   make_option("--network_set_names", type="character", default="",
             help="Optional comma-separated subset of network set names to run (e.g. CD4,B_cells).")
 )
