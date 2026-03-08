@@ -80,6 +80,10 @@ dir.create(file.path(opt$outdir, "consensus"), recursive = TRUE, showWarnings = 
 dir.create(file.path(opt$outdir, "tables"), recursive = TRUE, showWarnings = FALSE)
 dir.create(file.path(opt$outdir, "plots"), recursive = TRUE, showWarnings = FALSE)
 
+old_wd <- getwd()
+setwd(opt$outdir)
+on.exit(setwd(old_wd), add = TRUE)
+
 read_rds_list <- function(x) {
   xs <- strsplit(x, ",", fixed=TRUE)[[1]]
   xs <- trimws(xs)
@@ -497,6 +501,16 @@ for (set_name in names(ct_sets)) {
       xlab="Muumi weight (1/rank)"
     )
 
+  ed_log <- -log10(ed$weight + 1e-12)
+  ed_log <- max(ed_log, na.rm = TRUE) - ed_log + 1
+
+  plot_hist_png(
+    ed_log,
+    file.path(plots_donor, sprintf("muumi_edge_weight_hist_sparsified_log_%s.png", d)),
+    main = sprintf("%s: donor %s Muumi weights (sparsified, log-scale)", set_name, d),
+    xlab = "Gephi-friendly Muumi weight"
+  )
+
     # Build donor graph + LCC (kept)
     g_donor <- igraph::graph_from_data_frame(ed %>% dplyr::select(from, to, weight), directed=FALSE)
     g_donor <- igraph::simplify(g_donor, remove.multiple=TRUE, remove.loops=TRUE)
@@ -512,6 +526,16 @@ for (set_name in names(ct_sets)) {
       main=sprintf("%s: donor %s Muumi weights (post donor-LCC)", set_name, d),
       xlab="Muumi weight (1/rank)"
     )
+
+    ed2_log <- -log10(ed2$weight + 1e-12)
+    ed2_log <- max(ed2_log, na.rm = TRUE) - ed2_log + 1
+
+    plot_hist_png(
+    ed2_log,
+    file.path(plots_donor, sprintf("muumi_edge_weight_hist_postLCC_log_%s.png", d)),
+    main = sprintf("%s: donor %s Muumi weights (post donor-LCC, log-scale)", set_name, d),
+    xlab = "Gephi-friendly Muumi weight"
+  )
 
     donor_edges[[d]] <- ed2
 
@@ -594,9 +618,16 @@ for (set_name in names(ct_sets)) {
                    weight = .data$weight, support = .data$support)
 
   cons2 <- cons2 %>%
-    mutate(
-      support_frac = support / length(donor_edges),
-      weight_consensus = weight * support_frac
+  mutate(
+    support_frac = support / length(donor_edges),
+    weight_consensus = weight * support_frac
+  )
+
+ # Gephi-friendly positive transformed weights: larger = stronger
+wc_log <- -log10(cons2$weight_consensus + 1e-12)
+  cons2 <- cons2 %>%
+   mutate(
+     weight_consensus_log = max(wc_log, na.rm = TRUE) - wc_log + 1
     )
 
   plot_hist_png(
@@ -617,6 +648,13 @@ for (set_name in names(ct_sets)) {
   file.path(plots_set, "muumi_weight_FINAL_postLCC_log10.png"),
   main = sprintf("%s: FINAL Muumi weights (-log10)", set_name),
   xlab = "-log10(Muumi weight)"
+)
+
+plot_hist_png(
+  cons2$weight_consensus_log,
+  file.path(plots_set, "muumi_weight_consensus_log_FINAL_postLCC.png"),
+  main = sprintf("%s: FINAL Muumi consensus weights (Gephi log-scale)", set_name),
+  xlab = "Gephi-friendly consensus weight"
 )
 
   saveRDS(g, file=file.path(out_set, "graph_muumi.rds"))
@@ -689,10 +727,19 @@ for (set_name in names(ct_sets)) {
 
   # Edges (Gephi)
   write.csv(
-    cons2 %>% transmute(Source=from, Target=to, Weight=weight, support, support_frac, weight_consensus),
-    file=file.path(out_set, "edges_muumi.csv"),
-    row.names=FALSE, quote=TRUE
-  )
+  cons2 %>% transmute(
+    Source = from,
+    Target = to,
+    Weight = weight_consensus_log,
+    weight_raw = weight,
+    support,
+    support_frac,
+    weight_consensus
+  ),
+  file = file.path(out_set, "edges_muumi.csv"),
+  row.names = FALSE,
+  quote = TRUE
+)
 
   # ============================================================
   # Enrichment (your GMT ORA retained)
