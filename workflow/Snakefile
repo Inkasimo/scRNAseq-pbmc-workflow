@@ -115,7 +115,7 @@ def resolve_fastq_dir(donor):
 
 # ALL RULE
 DEG_ENABLED = as_bool(config.get("deg_and_tost", {}).get("enabled", True))
-NET_ENABLED = True
+NET_ENABLED = as_bool(config.get("network", {}).get("enabled", True))
 CLUST_ENABLED=as_bool(config.get("seurat_cluster_annot", {}).get("enabled", True))
 FILT_NORM_ENABLED=as_bool(config.get("seurat_filt_normalize", {}).get("enabled", True))
 
