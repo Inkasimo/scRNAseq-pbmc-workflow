@@ -132,7 +132,7 @@ SECTION_TARGETS = {
 }
 
 DEFAULT_TOY_ZENODO_URL = (
-    "https://zenodo.org/records/18685612/files/toy_data_bundle.tar.gz?download=1"
+    "https://zenodo.org/records/19021322/files/toy_data_bundle.tar.gz?download=1"
 )
 
 
