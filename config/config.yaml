@@ -27,6 +27,7 @@ trim:
 io:
   # set true ONLY if you want Snakemake to download FASTQs.
   # when false, workflow will only validate that fastq_dir exists and contains R1/R2.
+  # Wrapper will override this in relevant sections.
   download_fastqs: false
 
 ref:
