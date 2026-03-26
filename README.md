@@ -432,6 +432,7 @@ Project documentation is organized under the `docs/` directory:
 
 - Read trimming had negligible impact based on QC; untrimmed branch used for final runs
 - STARsolo mapping rates were consistent across donors (~69–72%)
+- STARsolo selected over Cell Ranger for transparent, reproducible integration into the workflow
 - Donor-aware pseudobulk modeling used to avoid pseudo-replication
 - Equivalence testing (TOST) used to explicitly identify conserved gene programs
 - Cell-type–specific co-expression networks revealed distinct modular immune programs
