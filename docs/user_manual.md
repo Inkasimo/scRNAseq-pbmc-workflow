@@ -29,7 +29,7 @@ reference preparation, and alignment/quantification, including:
 - Differential expression analysis
 - Equivalence test (TOST)
 - Pathway or gene set enrichment analysis
-- Co-expression and modularity analysis (Work in progress)
+- Co-expression and modularity analysis
 - Result summarization and visualization
 
 ### Project Goal
