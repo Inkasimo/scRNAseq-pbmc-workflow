@@ -426,7 +426,16 @@ Project documentation is organized under the `docs/` directory:
   not to claim novel biological findings.
 - R package versions inside the Docker image are managed with `renv`
   to ensure reproducible R environments.
-  Users do not need to interact with `renv` directly.
+  Users do not need to interact with `renv` directly.  
+
+### Result notes
+
+- Read trimming had negligible impact based on QC; untrimmed branch used for final runs
+- STARsolo mapping rates were consistent across donors (~69–72%)
+- Donor-aware pseudobulk modeling used to avoid pseudo-replication
+- Equivalence testing (TOST) used to explicitly identify conserved gene programs
+- Cell-type–specific co-expression networks revealed distinct modular immune programs
+ and functional organization across CD4 T cells, B cells, and monocytes
   
 ## Non-goals
 
