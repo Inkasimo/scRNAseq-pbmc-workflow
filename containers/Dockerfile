@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y \
 	libpng-dev libjpeg-dev libtiff5-dev \
     libfreetype6-dev libharfbuzz-dev libfribidi-dev \
 	pkg-config libfontconfig1-dev libcairo2-dev libglib2.0-dev \
+	libfftw3-3 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -64,5 +65,11 @@ COPY renv/activate.R /work/renv/activate.R
 COPY .Rprofile /work/.Rprofile
 
 # Restore into /opt/renv/library
-RUN R -q -e 'renv::settings$bioconductor.version("3.18"); renv::restore(project="/work", lockfile="/work/renv.lock", prompt=FALSE, rebuild=TRUE)'
+RUN R -q -e '\
+renv::settings$bioconductor.version("3.18"); \
+lock <- renv::lockfile_read("/work/renv.lock"); \
+pkgs <- setdiff(names(lock$Packages), "muumi"); \
+renv::restore(project="/work", lockfile="/work/renv.lock", prompt=FALSE, rebuild=TRUE, packages=pkgs); \
+renv::install("fhaive/muumi@f43c85ba06f76eaeda56d0ee54b3553e28cb9241") \
+'
 CMD ["bash"]

@@ -1,17 +1,18 @@
 # scRNA-seq PBMC Workflow
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18685612.svg)](https://doi.org/10.5281/zenodo.18685612)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19021322.svg)](https://doi.org/10.5281/zenodo.19021322)
 [![CI](https://github.com/Inkasimo/scRNAseq-pbmc-workflow/actions/workflows/ci.yml/badge.svg)](https://github.com/Inkasimo/scRNAseq-pbmc-workflow/actions/workflows/ci.yml)
-
 
 Reproducible, containerized single-cell RNA-seq workflow built with Snakemake + Docker, controlled via a Python CLI wrapper.
 
+The repository demonstrates production-grade workflow engineering and
+reproducible analysis infrastructure rather than novel biological discovery.
+
 End-to-end execution:
 
-**FASTQ → QC → STARsolo → Seurat → DESeq2/TOST → enrichment**
+**FASTQ → QC → STARsolo → Seurat → DESeq2/TOST → enrichment → network analysis**
 
 CI runs the toy workflow (including STAR index build on chr1) to validate reproducibility.
-
 
 ## Quick Start (Toy Demo)
 
@@ -29,10 +30,10 @@ git clone https://github.com/inkasimo/scRNAseq-pbmc-workflow.git
 ### 2. Pull the versioned Docker image (in repository)
 
 ```bash
-docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v1.1.0
+docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v2.0.0
 ```
 
-First pull may take several minutes (image ~1.5 GB).
+First pull may take several minutes (image ~3 GB).
 
 ### 3. Install wrapper dependency (host only)
 
@@ -114,6 +115,7 @@ A stable snapshot of representative full-run analysis outputs is archived on Zen
 - Cell-level QC and annotation
 - Differential expression (DESeq2) and equivalence testing (TOST)
 - Enrichment analysis
+- Network analysis
 - Module enrichment analysis
 
 ## Focus
@@ -147,6 +149,7 @@ All core tools are provided inside the Docker image, including:
 - Seurat
 - DESeq2
 - igraph
+- muumi
 
 ### Optional (wrapper only)
 
@@ -224,7 +227,7 @@ This workflow can be run in **Directly with Snakemake inside Docker**
 docker run --rm -it \
   -v "$(pwd)":/work \
   -w /work \
-  scrnaseq-workflow \
+  ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v2.0.0 \
   snakemake -n -p
   ```
 
@@ -235,7 +238,7 @@ docker run --rm -it \
 docker run --rm -it \
   -v "$(pwd)":/work \
   -w /work \
-  scrnaseq-workflow \
+  ghcr.io/inkasimo/scrnaseq-pbmc-workflow:v2.0.0 \
   snakemake results/alignment/starsolo/donor1/starsolo.done
 
   ```
@@ -261,6 +264,7 @@ results/              # Outputs and logs (not versioned)
   downstream/         # Downstream analysis results
 	deg_and_tost/     # DEG and TOST analysis results
 	seurat/           # Seurat objects and related plots and tables
+	networks/         # Network analysis results
 docs/                 # Documentation (technical summary, user manual, report, results layout, rulegraph)
   example_outputs/    # A small set of representative execution artifacts
 scripts/              # R-scripts and helpers
@@ -355,6 +359,7 @@ Cross-donor
   +-- DESeq2 (DE)
   +-- TOST (equivalence test)
   +-- enrichment (GSEA / ORA)
+  +-- Network analysis
 
 ```
 
