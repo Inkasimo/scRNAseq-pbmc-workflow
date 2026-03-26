@@ -434,6 +434,8 @@ Project documentation is organized under the `docs/` directory:
 - STARsolo mapping rates were consistent across donors (~69–72%)
 - STARsolo selected over Cell Ranger for transparent, reproducible integration into the workflow
 - Donor-aware pseudobulk modeling used to avoid pseudo-replication
+- Differential expression revealed strong transcriptional separation between 
+lymphoid and myeloid compartments with large marker gene sets
 - Equivalence testing (TOST) used to explicitly identify conserved gene programs
 - Cell-type–specific co-expression networks revealed distinct modular immune programs
  and functional organization across CD4 T cells, B cells, and monocytes
