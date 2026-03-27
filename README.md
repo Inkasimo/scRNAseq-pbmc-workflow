@@ -265,7 +265,7 @@ results/              # Outputs and logs (not versioned)
 	deg_and_tost/     # DEG and TOST analysis results
 	seurat/           # Seurat objects and related plots and tables
 	networks/         # Network analysis results
-docs/                 # Documentation (technical summary, user manual, report, results layout, rulegraph)
+docs/                 # Documentation (technical summary, user manual, white paper, results layout, rulegraph)
   example_outputs/    # A small set of representative execution artifacts
 scripts/              # R-scripts and helpers
 run_analysis.py       # Optional Python wrapper for section-based execution
@@ -407,13 +407,13 @@ Biology in Response to Inflammation. Immunity (2016).
 
 ## Documentation
 
-Project documentation is organized under the `docs/` directory:
+Comprehensive project documentation is maintained within the `docs/` directory to ensure full technical provenance and ease of onboarding:
 
-- **Workflow summary** (`docs/workflow_summary.pdf`) — concise 6-page technical overview covering architecture, reproducibility strategy, statistical modeling, and key results.
-  *(Recommended starting point.)*
-- **Technical report (full)** (`docs/scRNAseq-pbmc-worflow-report_full.pdf`) — comprehensive documentation of architectural decisions, biological rationale, statistical methodology, and extended results.
-- **User manual** (`docs/user_manual.md`) — execution instructions, Docker image usage, and wrapper configuration details.
-- **Results layout** (`docs/results_layout.md`) — illustrative output directory structure for result discovery and navigation.
+- **Technical White Paper** (`docs/White_Paper_scRNAseq_Architectural_Framework.pdf`) — The primary technical specification. This 45-page document details the system architecture, supply chain hardening (vendoring), GxP-compliant reproducibility strategies, and the TOST-based statistical framework. 
+  *(Recommended for technical leads and architects.)*
+- **Executive Summary** (`docs/White_Paper_Summary.pdf`) — A concise 7-page overview of the framework’s core value propositions, high-level DAG structure, and key biological validation results.
+- **User Manual** (`docs/user_manual.md`) — Operational instructions covering the Python Controller, Docker image deployment, and configuration schema.
+- **Results Architecture** (`docs/results_layout.md`) — A detailed map of the deterministic output tree, designed for rapid discovery and audit of analytical artifacts.
 
 ## Notes
 
