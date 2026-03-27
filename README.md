@@ -410,7 +410,6 @@ Biology in Response to Inflammation. Immunity (2016).
 Comprehensive project documentation is maintained within the `docs/` directory to ensure full technical provenance and ease of onboarding:
 
 - **Technical White Paper** (`docs/White_Paper_scRNAseq_Architectural_Framework.pdf`) — The primary technical specification. This 45-page document details the system architecture, supply chain hardening (vendoring), GxP-compliant reproducibility strategies, and the TOST-based statistical framework. 
-  *(Recommended for technical leads and architects.)*
 - **Executive Summary** (`docs/White_Paper_Summary.pdf`) — A concise 7-page overview of the framework’s core value propositions, high-level DAG structure, and key biological validation results.
 - **User Manual** (`docs/user_manual.md`) — Operational instructions covering the Python Controller, Docker image deployment, and configuration schema.
 - **Results Architecture** (`docs/results_layout.md`) — A detailed map of the deterministic output tree, designed for rapid discovery and audit of analytical artifacts.
