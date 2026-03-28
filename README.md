@@ -422,7 +422,7 @@ the use of Snakemake and digest-pinned images ensures the pipeline is architectu
 
 Comprehensive project documentation is maintained within the `docs/` directory to ensure full technical provenance and ease of onboarding:
 
-- **Technical White Paper** (`docs/White_Paper_scRNAseq_Architectural_Framework.pdf`) — The primary technical specification. This 45-page document details the system architecture, supply chain hardening (vendoring), GxP-compliant reproducibility strategies, and the TOST-based statistical framework. 
+- **Technical White Paper** (`docs/White_Paper_scRNAseq_Architectural_Framework.pdf`) — The primary technical specification. This 45-page document details the system architecture and presents the full biological results from the 10x PBMC (Donors 1-4) run, including cell-type annotation, donor-aware TOST equivalence testing, and consensus network analysis. 
 - **Executive Summary** (`docs/White_Paper_Summary.pdf`) — A concise 7-page overview of the framework’s core value propositions, high-level DAG structure, and key biological validation results.
 - **User Manual** (`docs/user_manual.md`) — Operational instructions covering the Python Controller, Docker image deployment, and configuration schema.
 - **Results Architecture** (`docs/results_layout.md`) — A detailed map of the deterministic output tree, designed for rapid discovery and audit of analytical artifacts.
