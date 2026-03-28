@@ -26,6 +26,19 @@ CI runs the toy workflow (including STAR index build on chr1) to validate reprod
 </p>
 
 
+## Example outputs
+
+A small set of outputs from a full PBMC run is available under `docs/example_outputs/`, illustrating key QC, clustering, and differential expression results.
+
+
+<p align="center">
+  <img src="docs/example_outputs/umap_by_cell_type_pred.png" width="48%" />
+  <img src="docs/example_outputs/volcano_B_like_vs_Mono_like.png" width="48%" />
+</p>
+
+
+A stable snapshot of representative full-run analysis outputs is archived on Zenodo (See Data availability).
+
 ## Quick Start (Toy Demo)
 
 - Runs a chromosome 1 mini-reference with downsampled FASTQs.
@@ -95,20 +108,6 @@ python3 run_analysis.py toy --trimmed
 Outputs written to:
 
 `results/`
-
-
-## Example outputs
-
-A small set of outputs from a full PBMC run is available under `docs/example_outputs/`, illustrating key QC, clustering, and differential expression results.
-
-
-<p align="center">
-  <img src="docs/example_outputs/umap_by_cell_type_pred.png" width="48%" />
-  <img src="docs/example_outputs/volcano_B_like_vs_Mono_like.png" width="48%" />
-</p>
-
-
-A stable snapshot of representative full-run analysis outputs is archived on Zenodo (See Data availability).
 
 
 ## What this pipeline does
