@@ -495,6 +495,7 @@ Typical sections include:
 - cluster_annotate_seurat
 - deg_and_tost
 - downstream
+- networks
 - unlock
 
 
