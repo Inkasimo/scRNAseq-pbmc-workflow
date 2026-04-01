@@ -29,7 +29,7 @@ reference preparation, and alignment/quantification, including:
 - Differential expression analysis
 - Equivalence test (TOST)
 - Pathway or gene set enrichment analysis
-- Co-expression and modularity analysis
+- Co-expression network and modularity analysis
 - Result summarization and visualization
 
 ### Project Goal
@@ -134,6 +134,8 @@ Each major pipeline step creates a .done file only after successful completion.
 - Seurat filtering and normalization
 - Seurat clustering and annotation
 - DEG/TOST (pseudobulk)
+- Co-expression networks
+
 Partial outputs may exist if a step is interrupted, but the absence of a .done
 file indicates that the step did not complete successfully.
 
