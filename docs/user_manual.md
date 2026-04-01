@@ -494,8 +494,8 @@ Typical sections include:
 - filter_and_normalize_seurat
 - cluster_annotate_seurat
 - deg_and_tost
-- downstream
 - networks
+- downstream
 - unlock
 
 
