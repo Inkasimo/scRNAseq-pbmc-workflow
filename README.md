@@ -6,16 +6,28 @@
 [![Docker](https://img.shields.io/badge/docker-ghcr.io-blue.svg)](https://github.com/Inkasimo/scRNAseq-pbmc-workflow/pkgs/container/scrnaseq-pbmc-workflow)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Reproducible, containerized single-cell RNA-seq workflow built with Snakemake + Docker, controlled via a Python CLI wrapper.
+Reproducible, containerized single-cell RNA-seq workflow for 10x PBMC data, built with Snakemake, Docker, STARsolo, Seurat, DESeq2, enrichment analysis, and network analysis.
 
-The repository demonstrates production-grade workflow engineering and
-reproducible analysis infrastructure rather than novel biological discovery.
+This is a portfolio project demonstrating production-style bioinformatics workflow engineering: 
+deterministic execution, containerized dependencies, explicit DAG orchestration, CI-tested toy data, 
+documented full-run outputs, and archived representative results. 
+The goal is to show reproducible analysis infrastructure rather than claim novel biological discovery.
 
-End-to-end execution:
+End-to-end workflow:
 
-**FASTQ → QC → STARsolo → Seurat → DESeq2/TOST → enrichment → network analysis**
+**FASTQ → QC → STARsolo → Seurat → pseudobulk DESeq2/TOST → enrichment → network analysis**
 
-CI runs the toy workflow (including STAR index build on chr1) to validate reproducibility.
+A small toy dataset is provided for quick validation, while representative full-run PBMC outputs are documented and archived separately.
+
+## What this demonstrates
+
+* Reproducible workflow orchestration with Snakemake
+* Containerized execution with Docker and versioned runtime dependencies
+* FASTQ-level QC, optional trimming, STARsolo alignment, and gene-cell matrix generation
+* Downstream single-cell analysis using Seurat, pseudobulk DESeq2, TOST equivalence testing, enrichment analysis, and co-expression/network analysis
+* CI validation using a downsampled toy dataset and chromosome 1 mini-reference
+* Clear separation between workflow engineering, statistical analysis, and biological interpretation
+* Documentation suitable for reviewer inspection, reruns, and audit of generated outputs
 
 ### Rule graph (untrimmed reads)
 
@@ -44,8 +56,7 @@ A stable snapshot of representative full-run analysis outputs is archived on Zen
 - Runs a chromosome 1 mini-reference with downsampled FASTQs.
 - Execution time: ~5–10 minutes after image pull and toy data download.
 - Toy data download size: ~ 81.3 MB (toy bundle) 
-- Toy runs upstream+Seurat object creation (no downstream from Seurat object creation)
-
+- Toy mode runs upstream processing through Seurat object creation; downstream DE, enrichment, and network analyses are not run in toy mode.
 ### 1. Clone the repository
 
 ```bash
@@ -168,7 +179,7 @@ All core tools are provided inside the Docker image, including:
 Python ≥3.9 with venv support (used only for the execution wrapper)
 
 
-### 1. Pull docker image 
+### 1. Pull Docker image 
 
 Use the same Docker image as shown in Quick Start.
 
@@ -454,12 +465,13 @@ lymphoid and myeloid compartments with large marker gene sets
   
 ## Non-goals
 
-This pipeline is not intended to benchmark methods or claim novel biological findings.
+This repository is not intended to benchmark scRNA-seq methods, provide a general-purpose clinical pipeline, 
+or claim novel biological findings. The biological analyses are included to demonstrate that the workflow produces coherent downstream outputs from a reproducible processing framework.
 
 ## Data availability
 
 A complete, versioned archive of pipeline outputs is available on Zenodo:
-[Zenodo archive](https://doi.org/10.5281/zenodo.18640320)
+[Zenodo archive](https://doi.org/10.5281/zenodo.19021322)
 
 
 This archive includes:

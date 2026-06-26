@@ -224,7 +224,7 @@ docker pull ghcr.io/inkasimo/scrnaseq-pbmc-workflow@sha256:a486aee53be7f89ebf330
 ```
 
 This command retrieves the exact container image used for the archived
-`v1.0.7` release. 
+`v2.0.0` release. 
 
 #### Local Development Build
 
